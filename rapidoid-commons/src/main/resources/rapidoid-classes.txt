@@ -477,6 +477,7 @@ org.rapidoid.jdbc.JDBC
 org.rapidoid.jdbc.JdbcClient
 org.rapidoid.jdbc.JDBCConfig
 org.rapidoid.jdbc.NoConnectionPool
+org.rapidoid.jdbc.SQLModule
 org.rapidoid.job.CallbackExecutorJob
 org.rapidoid.job.ContextPreservingJobWrapper
 org.rapidoid.job.Jobs
@@ -699,7 +700,6 @@ org.rapidoid.sql.dsl.SQLUpdateDSL
 org.rapidoid.sql.dsl.SQLUpdateWhereDSL
 org.rapidoid.sql.SQL
 org.rapidoid.sql.SQLMetaModel
-org.rapidoid.sql.SQLModule
 org.rapidoid.standalone.Main
 org.rapidoid.test.RapidoidIntegrationTest
 org.rapidoid.test.RapidoidTest
