@@ -20,6 +20,7 @@ package org.rapidoid.meta;
  * #L%
  */
 
+import org.rapidoid.RapidoidThing;
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
 import org.rapidoid.u.U;
@@ -28,7 +29,7 @@ import java.util.List;
 
 @Authors("Nikolche Mihajlovski")
 @Since("6.0.0")
-public class ServicesMeta {
+public class ServicesMeta extends RapidoidThing {
 
 	public List<ServiceMeta> services = U.list();
 

@@ -20,10 +20,11 @@ package org.rapidoid.api;
  * #L%
  */
 
+import org.rapidoid.RapidoidThing;
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
 
 @Authors("Nikolche Mihajlovski")
 @Since("6.0.0")
-public abstract class APIImpl implements API {
+public abstract class APIImpl extends RapidoidThing implements API {
 }

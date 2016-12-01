@@ -20,12 +20,13 @@ package org.rapidoid.meta;
  * #L%
  */
 
+import org.rapidoid.RapidoidThing;
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
 
 @Authors("Nikolche Mihajlovski")
 @Since("6.0.0")
-public class OptionMeta {
+public class OptionMeta extends RapidoidThing {
 
 	public String name;
 

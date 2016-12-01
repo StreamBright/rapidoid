@@ -20,6 +20,7 @@ package org.rapidoid.meta;
  * #L%
  */
 
+import org.rapidoid.RapidoidThing;
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Desc;
 import org.rapidoid.annotation.Since;
@@ -37,7 +38,7 @@ import java.util.Map;
 
 @Authors("Nikolche Mihajlovski")
 @Since("6.0.0")
-public class MetaUtil {
+public class MetaUtil extends RapidoidThing {
 
 	public static void generate(ServicesMeta meta, Class<?> serviceClass) {
 

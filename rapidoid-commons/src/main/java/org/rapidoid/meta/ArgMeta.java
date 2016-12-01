@@ -20,6 +20,7 @@ package org.rapidoid.meta;
  * #L%
  */
 
+import org.rapidoid.RapidoidThing;
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
 
@@ -27,7 +28,7 @@ import java.util.List;
 
 @Authors("Nikolche Mihajlovski")
 @Since("6.0.0")
-public class ArgMeta implements TypeMeta {
+public class ArgMeta extends RapidoidThing implements TypeMeta {
 
 	public String name;
 
