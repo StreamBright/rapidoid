@@ -4,7 +4,7 @@ package org.rapidoid.http;
  * #%L
  * rapidoid-http-fast
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,7 +49,7 @@ public class MaxHttpPerfTest {
 
 		String req = "GET /plaintext HTTP/1.1\r\nHost:www.test.com\r\n\r\n";
 
-		BufGroup gr = new BufGroup(14);
+		BufGroup gr = new BufGroup(16 * 1024);
 		final Buf buf = gr.newBuf();
 		buf.append(req);
 

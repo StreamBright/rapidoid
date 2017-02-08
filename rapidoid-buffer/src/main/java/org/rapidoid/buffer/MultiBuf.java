@@ -26,7 +26,7 @@ import java.nio.channels.WritableByteChannel;
  * #%L
  * rapidoid-buffer
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -55,6 +55,8 @@ public class MultiBuf extends OutputStream implements Buf, Constants {
 	private static final int TO_CHANNEL = 2;
 
 	private static final int TO_BUFFER = 3;
+
+	private static final int NOT_RELEVANT = Integer.MIN_VALUE;
 
 	private final Pool<ByteBuffer> bufPool;
 
@@ -419,32 +421,43 @@ public class MultiBuf extends OutputStream implements Buf, Constants {
 
 	@Override
 	public int writeTo(WritableByteChannel channel) throws IOException {
-		assert invariant(true);
+		return writeTo(channel, 0, _size());
+	}
 
-		int wrote = writeTo(TO_CHANNEL, 0, _size(), null, channel, null, 0);
+	@Override
+	public int writeTo(WritableByteChannel channel, int srcOffset, int length) throws IOException {
+		assert invariant(false);
+
+		int wrote = writeTo(TO_CHANNEL, srcOffset, length, null, channel, null, NOT_RELEVANT);
 		assert U.must(wrote <= _size(), "Incorrect write to channel!");
 
-		assert invariant(true);
+		assert invariant(false);
 		return wrote;
 	}
 
 	@Override
 	public int writeTo(ByteBuffer buffer) {
-		assert invariant(true);
+		return writeTo(buffer, 0, _size());
+	}
+
+	@Override
+	public int writeTo(ByteBuffer buffer, int srcOffset, int length) {
+		assert invariant(false);
 
 		try {
-			int wrote = writeTo(TO_BUFFER, 0, _size(), null, null, buffer, 0);
-			assert wrote == _size();
-			assert invariant(true);
+			int wrote = writeTo(TO_BUFFER, srcOffset, length, null, null, buffer, NOT_RELEVANT);
+			assert wrote == length;
+			assert invariant(false);
 			return wrote;
 		} catch (IOException e) {
-			assert invariant(true);
+			assert invariant(false);
 			throw U.rte(e);
 		}
 	}
 
 	private int writeTo(int mode, int offset, int length, byte[] bytes, WritableByteChannel channel, ByteBuffer buffer,
 	                    int destOffset) throws IOException {
+
 		if (_size() == 0) {
 			assert length == 0;
 			return 0;
@@ -582,7 +595,7 @@ public class MultiBuf extends OutputStream implements Buf, Constants {
 	}
 
 	private void dumpBuffers() {
-		System.out.println(">> BUFFER " + name + " HAS " + bufN + " PARTS:");
+		U.print(">> BUFFER " + name + " HAS " + bufN + " PARTS:");
 
 		for (int i = 0; i < bufN - 1; i++) {
 			ByteBuffer buf = bufs[i];
@@ -948,8 +961,9 @@ public class MultiBuf extends OutputStream implements Buf, Constants {
 		_limit = _size();
 
 		if (bufN == 1) {
-			singleBytes.setBuf(bufs[0]);
+			singleBytes.setTarget(bufs[0], shrinkN, _limit);
 			_bytes = singleBytes;
+
 		} else {
 			_bytes = multiBytes;
 		}
@@ -1394,11 +1408,13 @@ public class MultiBuf extends OutputStream implements Buf, Constants {
 
 	@Override
 	public void write(int byteValue) throws IOException {
+		// used as OutputStream
 		append((byte) byteValue);
 	}
 
 	@Override
 	public void write(byte[] src, int off, int len) throws IOException {
+		// used as OutputStream
 		append(src, off, len);
 	}
 

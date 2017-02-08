@@ -13,7 +13,7 @@ import java.util.List;
  * #%L
  * rapidoid-commons
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ import java.util.List;
 
 @Authors("Nikolche Mihajlovski")
 @Since("5.3.0")
-public class GroupOf<E> extends RapidoidThing {
+public class GroupOf<E extends Manageable> extends RapidoidThing {
 
 	private final Class<E> itemType;
 
@@ -44,6 +44,7 @@ public class GroupOf<E> extends RapidoidThing {
 	public GroupOf(Class<E> itemType, String name) {
 		this.itemType = itemType;
 		this.name = name;
+		Groups.ALL.add(this);
 	}
 
 	public String name() {
@@ -98,6 +99,22 @@ public class GroupOf<E> extends RapidoidThing {
 		return items.get(index);
 	}
 
+	public E get(String id) {
+		E item = find(id);
+		U.must(item != null, "Cannot find item with id='%s'!", id);
+		return item;
+	}
+
+	public E find(String id) {
+		U.notNull(id, "id");
+
+		for (E item : items) {
+			if (U.eq(id, item.id())) return item;
+		}
+
+		return null;
+	}
+
 	public E remove(int index) {
 		return items.remove(index);
 	}
@@ -139,6 +156,24 @@ public class GroupOf<E> extends RapidoidThing {
 			", size=" + items.size() +
 			", stats=" + stats +
 			'}';
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		GroupOf<?> groupOf = (GroupOf<?>) o;
+
+		if (!itemType.equals(groupOf.itemType)) return false;
+		return name.equals(groupOf.name);
+	}
+
+	@Override
+	public int hashCode() {
+		int result = itemType.hashCode();
+		result = 31 * result + name.hashCode();
+		return result;
 	}
 
 }

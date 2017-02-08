@@ -3,10 +3,12 @@ package org.rapidoid.net.abstracts;
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
 import org.rapidoid.buffer.Buf;
+import org.rapidoid.net.AsyncLogic;
 import org.rapidoid.net.impl.ConnState;
 import org.rapidoid.net.impl.RapidoidHelper;
 
 import java.io.File;
+import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 
@@ -14,7 +16,7 @@ import java.nio.ByteBuffer;
  * #%L
  * rapidoid-net
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -60,6 +62,8 @@ public interface ProtocolContext<T> {
 
 	void setRequest(IRequest request);
 
+	long handle();
+
 	boolean onSameThread();
 
 	/* PROTOCOL */
@@ -87,9 +91,9 @@ public interface ProtocolContext<T> {
 	/* ASYNC */
 
 	// due to async() web handling option, it ain't over till the fat lady sings "done"
-	T async();
+	long async();
 
-	T done();
+	void resume(long handle, AsyncLogic asyncLogic);
 
 	/* READ */
 
@@ -102,6 +106,8 @@ public interface ProtocolContext<T> {
 	Buf input();
 
 	Buf output();
+
+	OutputStream outputStream();
 
 	RapidoidHelper helper();
 

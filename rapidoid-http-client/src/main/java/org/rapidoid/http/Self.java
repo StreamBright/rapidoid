@@ -10,7 +10,7 @@ import org.rapidoid.u.U;
  * #%L
  * rapidoid-http-client
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ public class Self extends RapidoidThing {
 
 	public static String localUrl(String urlPath) {
 		U.must(urlPath.startsWith("/"), "Invalid URL path, it must start with '/'!");
-		int port = Conf.APP.entry("port").or(8888);
+		int port = Conf.ON.entry("port").or(8080);
 		return "http://localhost:" + port + urlPath;
 	}
 

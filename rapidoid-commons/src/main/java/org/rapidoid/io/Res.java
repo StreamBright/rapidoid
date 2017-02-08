@@ -10,8 +10,10 @@ import org.rapidoid.u.U;
 import org.rapidoid.util.Msc;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
@@ -23,7 +25,7 @@ import java.util.regex.Pattern;
  * #%L
  * rapidoid-commons
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -227,7 +229,16 @@ public class Res extends RapidoidThing {
 			// a normal file on the file system
 			Log.trace("Resource file exists", "name", name, "file", file);
 
-			if (file.lastModified() > this.lastModified || !filename.equals(cachedFileName)) {
+			long lastModif;
+			try {
+				lastModif = Files.getLastModifiedTime(file.toPath()).to(TimeUnit.MILLISECONDS);
+
+			} catch (IOException e) {
+				// maybe it doesn't exist anymore
+				lastModif = U.time();
+			}
+
+			if (lastModif > this.lastModified || !filename.equals(cachedFileName)) {
 				Log.debug("Loading resource file", "name", name, "file", file);
 				this.lastModified = file.lastModified();
 				this.hidden = file.isHidden();

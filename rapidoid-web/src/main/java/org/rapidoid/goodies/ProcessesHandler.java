@@ -2,9 +2,12 @@ package org.rapidoid.goodies;
 
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
+import org.rapidoid.group.GroupOf;
+import org.rapidoid.group.Groups;
 import org.rapidoid.gui.GUI;
+import org.rapidoid.gui.Grid;
+import org.rapidoid.lambda.Mapper;
 import org.rapidoid.process.ProcessHandle;
-import org.rapidoid.process.Processes;
 import org.rapidoid.u.U;
 
 import java.util.List;
@@ -14,7 +17,7 @@ import java.util.concurrent.Callable;
  * #%L
  * rapidoid-web
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,17 +38,31 @@ import java.util.concurrent.Callable;
 public class ProcessesHandler extends GUI implements Callable<Object> {
 
 	public static final String[] COLUMNS = {
+		"id",
 		"cmd",
 		"args",
 		"$.params().in()",
 		"alive",
+		"exitCode",
+		"$.duration() / 1000",
+		"startedAt",
+		"finishedAt",
+		"$.group().name()",
+		"(actions)"
 	};
 
 	public static final Object[] COLUMN_NAMES = {
+		"ID",
 		"Command",
 		"Arguments",
 		"Location",
 		"Is alive?",
+		"Exit code",
+		"Duration (sec)",
+		"Started at",
+		"Finished at",
+		"Group",
+		"Actions",
 	};
 
 	@Override
@@ -54,9 +71,26 @@ public class ProcessesHandler extends GUI implements Callable<Object> {
 
 		info.add(h3("Managed processes:"));
 
-		List<ProcessHandle> processes = Processes.DEFAULT.items();
+		List<GroupOf<ProcessHandle>> gr = Groups.find(ProcessHandle.class);
 
-		info.add(grid(processes).columns(COLUMNS).headers(COLUMN_NAMES).pageSize(0));
+		List<ProcessHandle> processes = U.list();
+
+		for (GroupOf<ProcessHandle> group : gr) {
+			processes.addAll(group.items());
+		}
+
+		Grid grid = grid(processes)
+			.columns(COLUMNS)
+			.headers(COLUMN_NAMES)
+			.toUri(new Mapper<ProcessHandle, String>() {
+				@Override
+				public String map(ProcessHandle handle) throws Exception {
+					return U.frmt("/_processes/%s", handle.id());
+				}
+			})
+			.pageSize(100);
+
+		info.add(grid);
 
 		return multi(info);
 	}

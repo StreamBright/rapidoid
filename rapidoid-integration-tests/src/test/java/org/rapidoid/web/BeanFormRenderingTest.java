@@ -4,7 +4,7 @@ package org.rapidoid.web;
  * #%L
  * rapidoid-integration-tests
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ public class BeanFormRenderingTest extends IsolatedIntegrationTest {
 		On.page("/").html(() -> GUI.edit(new Dude("unknown", 100)));
 
 		getAndPost("/");
-		getAndPost("/?name=foo&age=12345"); // URL params are ignored
+		getAndPost("/?name=foo&age=12345");
 
 		postData("/?bad-age", U.map("name", "Mozart", "age", "123f"));
 		postData("/?name=hey&age=77", U.map("name", "Bach"));

@@ -4,7 +4,7 @@ package org.rapidoid.ioc.basic;
  * #%L
  * rapidoid-inject
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,13 +24,13 @@ import org.junit.Test;
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
 import org.rapidoid.ioc.Wired;
-import org.rapidoid.test.RapidoidTest;
+import org.rapidoid.test.RapidoidIntegrationTest;
 
 import javax.inject.Inject;
 
 @Authors("Nikolche Mihajlovski")
 @Since("5.3.0")
-public class TestAutowireTest extends RapidoidTest {
+public class TestAutowireTest extends RapidoidIntegrationTest {
 
 	static class B {
 		@Inject

@@ -7,6 +7,8 @@ import org.rapidoid.annotation.Since;
 import org.rapidoid.cls.Cls;
 import org.rapidoid.ctx.Ctx;
 import org.rapidoid.ctx.Ctxs;
+import org.rapidoid.jpa.impl.CustomHibernatePersistenceProvider;
+import org.rapidoid.jpa.impl.JPAInternals;
 import org.rapidoid.log.Log;
 import org.rapidoid.u.U;
 import org.rapidoid.util.Msc;
@@ -23,7 +25,7 @@ import java.util.Properties;
  * #%L
  * rapidoid-jpa
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -57,12 +59,14 @@ public class JPAUtil extends RapidoidThing {
 
 	public static EntityManager em() {
 		Ctx ctx = Ctxs.get();
+
 		if (ctx != null) {
-			return ctx.persister();
+			return JPAInternals.wrapEM((EntityManager) ctx.persister());
+
 		} else {
 			EntityManagerFactory emf = JPAUtil.emf;
 			U.notNull(emf, "JPA.emf");
-			return emf.createEntityManager();
+			return JPAInternals.wrapEM(emf.createEntityManager());
 		}
 	}
 
@@ -173,7 +177,7 @@ public class JPAUtil extends RapidoidThing {
 		return emf;
 	}
 
-	static <T> List<T> getPage(Query q, int start, int length) {
+	public static <T> List<T> getPage(Query q, int start, int length) {
 		q.setFirstResult(start);
 		q.setMaxResults(length);
 

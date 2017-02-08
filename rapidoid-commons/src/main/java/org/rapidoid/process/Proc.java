@@ -10,7 +10,7 @@ import java.io.File;
  * #%L
  * rapidoid-commons
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,4 +45,17 @@ public class Proc extends RapidoidThing {
 	public static ProcessParams group(Processes group) {
 		return new ProcessParams().group(group);
 	}
+
+	public static ProcessParams id(String id) {
+		return new ProcessParams().id(id);
+	}
+
+	public ProcessParams printingOutput(boolean printingOutput) {
+		return new ProcessParams().printingOutput(printingOutput);
+	}
+
+	public ProcessParams linePrefix(String linePrefix) {
+		return new ProcessParams().linePrefix(linePrefix);
+	}
+
 }

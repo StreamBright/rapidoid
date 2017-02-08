@@ -4,7 +4,7 @@ package org.rapidoid.config;
  * #%L
  * rapidoid-commons
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,8 +20,13 @@ package org.rapidoid.config;
  * #L%
  */
 
+import org.rapidoid.annotation.Authors;
+import org.rapidoid.annotation.Since;
+
 import java.util.Map;
 
+@Authors("Nikolche Mihajlovski")
+@Since("5.0.0")
 public interface ConfigParser {
 
 	Map<String, Object> parse(byte[] bytes);

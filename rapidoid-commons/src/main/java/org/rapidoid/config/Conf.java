@@ -1,8 +1,11 @@
 package org.rapidoid.config;
 
 import org.rapidoid.RapidoidThing;
+import org.rapidoid.annotation.Authors;
+import org.rapidoid.annotation.Since;
 import org.rapidoid.collection.Coll;
 import org.rapidoid.env.Env;
+import org.rapidoid.env.RapidoidEnv;
 import org.rapidoid.lambda.Mapper;
 import org.rapidoid.log.Log;
 import org.rapidoid.log.LogLevel;
@@ -16,7 +19,7 @@ import java.util.Map;
  * #%L
  * rapidoid-commons
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,11 +35,12 @@ import java.util.Map;
  * #L%
  */
 
-/**
- * @author Nikolche Mihajlovski
- * @since 2.0.0
- */
+@Authors("Nikolche Mihajlovski")
+@Since("2.0.0")
 public class Conf extends RapidoidThing {
+
+	private static final String CONFIG_NAME = Msc.isPlatform() ? "rapidoid" : "config";
+	public static final Config ROOT = new ConfigImpl(CONFIG_NAME, true);
 
 	private static final Map<String, Config> SECTIONS = Coll.autoExpandingMap(new Mapper<String, Config>() {
 		@Override
@@ -44,8 +48,6 @@ public class Conf extends RapidoidThing {
 			return createSection(name);
 		}
 	});
-
-	public static final Config ROOT = new ConfigImpl("config", true);
 
 	public static final Config USERS = section("users");
 	public static final Config JOBS = section("jobs");
@@ -55,18 +57,20 @@ public class Conf extends RapidoidThing {
 	public static final Config C3P0 = section("c3p0");
 	public static final Config APP = section("app");
 	public static final Config HTTP = section("http");
+	public static final Config NET = section("net");
 	public static final Config ON = section("on");
 	public static final Config ADMIN = section("admin");
 	public static final Config TOKEN = section("token");
 	public static final Config PROXY = section("proxy");
-	public static final Config SQL = section("sql");
 	public static final Config LOG = section("log");
+	public static final Config API = section("api");
 
 	static void applyConfig(Config config) {
+		RapidoidEnv.touch();
 
 		if (Env.isInitialized()) {
 			if (!Env.production()) {
-				Log.setStyled(true);
+				Log.options().fancy(true);
 			}
 		}
 
@@ -86,7 +90,7 @@ public class Conf extends RapidoidThing {
 
 			boolean fancy = LOG.entry("fancy").bool().or(Msc.hasConsole());
 			if (fancy) {
-				Log.setStyled(true);
+				Log.options().fancy(true);
 			}
 
 			String logLevel = LOG.entry("level").or("info");
@@ -116,6 +120,10 @@ public class Conf extends RapidoidThing {
 
 	public static void setFilenameBase(String filenameBase) {
 		ROOT.setFilenameBase(filenameBase);
+	}
+
+	public static void setPath(String path) {
+		ROOT.setPath(path);
 	}
 
 }

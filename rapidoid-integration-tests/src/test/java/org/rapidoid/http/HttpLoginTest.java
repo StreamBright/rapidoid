@@ -4,7 +4,7 @@ package org.rapidoid.http;
  * #%L
  * rapidoid-integration-tests
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,12 +29,15 @@ import org.rapidoid.ctx.Contextual;
 import org.rapidoid.security.Role;
 import org.rapidoid.setup.On;
 import org.rapidoid.u.U;
+import org.rapidoid.util.Msc;
 
 import java.util.List;
 
 @Authors("Nikolche Mihajlovski")
 @Since("5.1.0")
 public class HttpLoginTest extends IsolatedIntegrationTest {
+
+	volatile boolean ready = false;
 
 	@Test
 	public void testLogin() {
@@ -52,10 +55,13 @@ public class HttpLoginTest extends IsolatedIntegrationTest {
 			return U.list(Contextual.username(), Contextual.roles());
 		});
 
-		multiThreaded(50, 200, this::randomUserLogin);
+		ready = true;
+		multiThreaded(150, Msc.normalOrHeavy(1500, 15000), this::randomUserLogin);
 	}
 
 	private void randomUserLogin() {
+		while (!ready) U.sleep(100); // wait
+
 		switch (Rnd.rnd(4)) {
 			case 0:
 				loginFlow("foo", "bar", U.list());

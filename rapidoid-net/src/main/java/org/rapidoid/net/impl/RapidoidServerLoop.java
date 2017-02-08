@@ -22,7 +22,7 @@ import java.util.Set;
  * #%L
  * rapidoid-net
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -68,13 +68,13 @@ public class RapidoidServerLoop extends AbstractLoop<Server> implements Server, 
 
 	private final int bufSizeKB;
 
-	private final boolean noNelay;
+	private final boolean noDelay;
 
 	private final boolean syncBufs;
 
 	public RapidoidServerLoop(Protocol protocol, Class<? extends DefaultExchange<?>> exchangeClass,
 	                          Class<? extends RapidoidHelper> helperClass, String address, int port,
-	                          int workers, int bufSizeKB, boolean noNelay, boolean syncBufs) {
+	                          int workers, int bufSizeKB, boolean noDelay, boolean syncBufs) {
 		super("server");
 
 		this.protocol = protocol;
@@ -83,7 +83,7 @@ public class RapidoidServerLoop extends AbstractLoop<Server> implements Server, 
 		this.port = port;
 		this.workers = workers;
 		this.bufSizeKB = bufSizeKB;
-		this.noNelay = noNelay;
+		this.noDelay = noDelay;
 		this.syncBufs = syncBufs;
 		this.helperClass = U.or(helperClass, RapidoidHelper.class);
 
@@ -154,7 +154,7 @@ public class RapidoidServerLoop extends AbstractLoop<Server> implements Server, 
 		for (int i = 0; i < ioWorkers.length; i++) {
 
 			RapidoidWorkerThread workerThread = new RapidoidWorkerThread(i, protocol, exchangeClass,
-				helperClass, bufSizeKB, noNelay, syncBufs);
+				helperClass, bufSizeKB, noDelay, syncBufs);
 			workerThread.start();
 
 			ioWorkers[i] = workerThread.getWorker();
@@ -175,6 +175,12 @@ public class RapidoidServerLoop extends AbstractLoop<Server> implements Server, 
 	@Override
 	public synchronized Server start() {
 		new RapidoidThread(this, "server").start();
+
+		waitForStatusOtherThan(LoopStatus.INIT, LoopStatus.BEFORE_LOOP);
+
+		if (status == LoopStatus.FAILED) {
+			throw U.rte("Server start-up failed!");
+		}
 
 		return super.start();
 	}
@@ -287,9 +293,10 @@ public class RapidoidServerLoop extends AbstractLoop<Server> implements Server, 
 
 	private void acceptChannel(ServerSocketChannel serverChannel) {
 		try {
-			SocketChannel channel = serverSocketChannel.accept();
+			SocketChannel channel = serverChannel.accept();
 			currentWorker.accept(channel);
 			currentWorker = currentWorker.next;
+
 		} catch (IOException e) {
 			Log.error("Acceptor error!", e);
 		}

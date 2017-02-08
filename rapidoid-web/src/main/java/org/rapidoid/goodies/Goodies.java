@@ -4,6 +4,12 @@ import org.rapidoid.RapidoidThing;
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
 import org.rapidoid.cls.Cls;
+import org.rapidoid.goodies.deployment.DeploymentHandler;
+import org.rapidoid.goodies.deployment.JarDeploymentHandler;
+import org.rapidoid.goodies.deployment.JarStagingHandler;
+import org.rapidoid.goodies.discovery.DiscoveryIndexHandler;
+import org.rapidoid.goodies.discovery.DiscoveryRegistrationHandler;
+import org.rapidoid.goodies.discovery.DiscoveryState;
 import org.rapidoid.gui.GUI;
 import org.rapidoid.http.HttpUtils;
 import org.rapidoid.http.HttpVerb;
@@ -16,14 +22,13 @@ import org.rapidoid.setup.Setup;
 import org.rapidoid.u.U;
 import org.rapidoid.util.Msc;
 
-import java.lang.management.ManagementFactory;
 import java.lang.reflect.Method;
 
 /*
  * #%L
  * rapidoid-web
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,113 +48,20 @@ import java.lang.reflect.Method;
 @Since("5.1.0")
 public class Goodies extends RapidoidThing {
 
-	public static MultiDetailsHandler memoryPool() {
-		return new MultiDetailsHandler("Memory pool", ManagementFactory.getMemoryPoolMXBeans(), "name", "type", "memoryManagerNames", "usage", "peakUsage", "collectionUsage");
-	}
-
-	public static DetailsHandler classes() {
-		return new DetailsHandler("Classes", ManagementFactory.getClassLoadingMXBean(), "-objectName");
-	}
-
-	public static DetailsHandler os() {
-		return new DetailsHandler("Operating system", ManagementFactory.getOperatingSystemMXBean(), "-objectName");
-	}
-
-	public static DetailsHandler threads() {
-		return new DetailsHandler("JVM Threads", ManagementFactory.getThreadMXBean(), "-objectName", "-allThreadIds").sorted(true);
-	}
-
-	public static DetailsHandler compilation() {
-		return new DetailsHandler("Compilation", ManagementFactory.getCompilationMXBean(), "-objectName");
-	}
-
-	public static DetailsHandler runtime() {
-		return new DetailsHandler("Runtime", ManagementFactory.getRuntimeMXBean(), "-objectName", "-classPath", "-bootClassPath", "-systemProperties");
-	}
-
-	public static MultiDetailsHandler gc() {
-		return new MultiDetailsHandler("Garbage collection", ManagementFactory.getGarbageCollectorMXBeans(), "-objectName", "-memoryPools", "-lastGcInfo");
-	}
-
-	public static DetailsHandler memory() {
-		return new DetailsHandler("Memory", ManagementFactory.getMemoryMXBean(), "-objectName").sorted(true);
-	}
-
-	public static GraphsHandler graphs() {
-		return new GraphsHandler();
-	}
-
-	public static GraphDataHandler graphData() {
-		return new GraphDataHandler();
-	}
-
-	public static LoginHandler login() {
-		return new LoginHandler();
-	}
-
-	public static LogoutHandler logout() {
-		return new LogoutHandler();
-	}
-
-	public static ConfigHandler config() {
-		return new ConfigHandler();
-	}
-
-	public static EntitiesHandler entities() {
-		return new EntitiesHandler();
-	}
-
-	public static RoutesHandler routes() {
-		return new RoutesHandler();
-	}
-
-	public static BeansHandler beans() {
-		return new BeansHandler();
-	}
-
-	public static OverviewHandler overview() {
-		return new OverviewHandler();
-	}
-
-	public static ClasspathHandler classpath() {
-		return new ClasspathHandler();
-	}
-
-	public static ProcessesHandler processes() {
-		return new ProcessesHandler();
-	}
-
-	public static DeploymentHandler deployment() {
-		return new DeploymentHandler();
-	}
-
-	public static JarStagingHandler jarStaging() {
-		return new JarStagingHandler();
-	}
-
-	public static JarDeploymentHandler jarDeployment() {
-		return new JarDeploymentHandler();
-	}
-
-	public static TerminateHandler terminate() {
-		return new TerminateHandler();
-	}
-
-	public static StatusHandler status() {
-		return new StatusHandler();
-	}
+	public static final JMXGoodies JMX = new JMXGoodies();
 
 	public static void bootstrap(Setup setup) {
 		if (setup.isAdmin()) {
 			adminCenter(setup);
+
 		} else if (setup.isApp()) {
 			bootstrapAppGoodies(setup);
 		}
 	}
 
 	public static void auth(Setup setup) {
-		setup.post("/_login").roles().json(Goodies.login());
-		setup.get("/_logout").roles(Role.LOGGED_IN).json(Goodies.logout());
+		setup.post("/_login").roles().json(new LoginHandler());
+		setup.get("/_logout").roles(Role.LOGGED_IN).json(new LogoutHandler());
 	}
 
 	public static void bootstrapAppGoodies(Setup setup) {
@@ -167,6 +79,7 @@ public class Goodies extends RapidoidThing {
 		entities(setup);
 		application(setup);
 		lifecycle(setup);
+		processes(setup);
 		jmx(setup);
 		metrics(setup);
 		deployment(setup);
@@ -179,44 +92,49 @@ public class Goodies extends RapidoidThing {
 	}
 
 	public static void lifecycle(Setup setup) {
-		setup.page("/_terminate").mvc(Goodies.terminate());
+		setup.page("/_terminate").mvc(new TerminateHandler());
 	}
 
 	public static void overview(Setup setup) {
-		setup.page("/_").mvc(Goodies.overview());
+		setup.page("/_").mvc(new OverviewHandler());
 	}
 
 	public static void application(Setup setup) {
-		setup.page("/_routes").mvc(Goodies.routes());
-		setup.page("/_beans").mvc(Goodies.beans());
-		setup.page("/_config").mvc(Goodies.config());
-		setup.get("/_classpath").mvc(Goodies.classpath());
+		setup.page("/_routes").mvc(new RoutesHandler());
+		setup.page("/_beans").mvc(new BeansHandler());
+		setup.page("/_config").mvc(new ConfigHandler());
+		setup.get("/_classpath").mvc(new ClasspathHandler());
 	}
 
 	public static void deployment(Setup setup) {
-		setup.page("/_deployment").mvc(Goodies.deployment());
-		setup.post("/_stage").json(Goodies.jarStaging());
-		setup.post("/_deploy").json(Goodies.jarDeployment());
+		setup.page("/_deployment").mvc(new DeploymentHandler());
+		setup.post("/_stage").json(new JarStagingHandler());
+		setup.post("/_deploy").json(new JarDeploymentHandler());
 	}
 
 	public static void metrics(Setup setup) {
-		setup.page("/_metrics").mvc(Goodies.graphs());
-		setup.get("/_graphs/{id:.*}").json(Goodies.graphData());
+		setup.page("/_metrics").mvc(new GraphsHandler());
+		setup.get("/_graphs/{id:.*}").json(new GraphDataHandler());
+	}
+
+	public static void processes(Setup setup) {
+		setup.page("/_processes").mvc(new ProcessesHandler());
+		setup.page("/_processes/{id}").mvc(new ProcessDetailsHandler());
 	}
 
 	public static void jmx(Setup setup) {
-		setup.page("/_jmx/memory").mvc(Goodies.memory());
-		setup.page("/_jmx/mempool").mvc(Goodies.memoryPool());
-		setup.page("/_jmx/classes").mvc(Goodies.classes());
-		setup.page("/_jmx/os").mvc(Goodies.os());
-		setup.page("/_jmx/threads").mvc(Goodies.threads());
-		setup.page("/_jmx/compilation").mvc(Goodies.compilation());
-		setup.page("/_jmx/runtime").mvc(Goodies.runtime());
-		setup.page("/_jmx/gc").mvc(Goodies.gc());
+		setup.page("/_jmx/memory").mvc(JMX.memory());
+		setup.page("/_jmx/mempool").mvc(JMX.memoryPool());
+		setup.page("/_jmx/classes").mvc(JMX.classes());
+		setup.page("/_jmx/os").mvc(JMX.os());
+		setup.page("/_jmx/threads").mvc(JMX.threads());
+		setup.page("/_jmx/compilation").mvc(JMX.compilation());
+		setup.page("/_jmx/runtime").mvc(JMX.runtime());
+		setup.page("/_jmx/gc").mvc(JMX.gc());
 	}
 
 	public static void entities(Setup setup) {
-		setup.page("/_entities").mvc(Goodies.entities());
+		setup.page("/_entities").mvc(new EntitiesHandler());
 
 		if (Msc.hasJPA()) {
 			for (Class<?> type : JPA.getEntityJavaTypes()) {
@@ -247,7 +165,19 @@ public class Goodies extends RapidoidThing {
 	}
 
 	public static void status(Setup setup) {
-		setup.get("/_status").json(Goodies.status());
+		setup.get("/_status").json(new StatusHandler());
+	}
+
+	public static void discovery(Setup setup) {
+		DiscoveryState state = new DiscoveryState();
+
+		setup.post("/_discovery/{scope}/register").json(new DiscoveryRegistrationHandler(state));
+
+		setup.get("/_discovery/{scope}").json(new DiscoveryIndexHandler(state));
+	}
+
+	public static void echo(Setup setup) {
+		setup.get("/_echo").json(new EchoHandler());
 	}
 
 }

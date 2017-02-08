@@ -4,7 +4,7 @@ package org.rapidoid.http;
  * #%L
  * rapidoid-web
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,9 +41,9 @@ public class HttpHeadersNoDecodingTest extends HttpTestCommons {
 		String a = "x-y+z++=123";
 		String b = "c!@#d35f=-+1#";
 
-		HttpClient client = HTTP.client().host("http://localhost:8888/").cookie("b+b-b", b);
+		HttpClient client = HTTP.client().host("http://localhost:8080/").cookie("b+b-b", b);
 
-		String resp = client.get("http://localhost:8888/").header("a+a-a", a).fetch();
+		String resp = client.get("http://localhost:8080/").header("a+a-a", a).fetch();
 
 		eq(resp, a + ":::" + b);
 	}

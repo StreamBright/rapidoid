@@ -4,7 +4,7 @@ package org.rapidoid.jdbc;
  * #%L
  * rapidoid-integration-tests
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import org.rapidoid.annotation.Since;
 import org.rapidoid.config.Conf;
 import org.rapidoid.http.IsolatedIntegrationTest;
 import org.rapidoid.setup.App;
+import org.rapidoid.u.U;
 
 @Authors("Nikolche Mihajlovski")
 @Since("5.2.5")
@@ -43,10 +44,10 @@ public class SqlRoutesTest extends IsolatedIntegrationTest {
 		JDBC.execute("insert into nums values (?, ?)", 1, "one");
 		JDBC.execute("insert into nums values (?, ?)", 2, "two");
 
-		isFalse(Conf.SQL.isEmpty());
+		isFalse(Conf.API.isEmpty());
 
-		eq(Conf.SQL.get("/nums"), all);
-		eq(Conf.SQL.get("POST /add"), add);
+		eq(Conf.API.get("/nums"), U.map("sql", all));
+		eq(Conf.API.get("POST /add"), U.map("sql", add));
 
 		onlyPost("/add");
 		onlyGet("/nums");

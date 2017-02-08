@@ -8,6 +8,7 @@ import org.rapidoid.u.U;
 
 import javax.xml.bind.DatatypeConverter;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -16,7 +17,7 @@ import java.util.regex.Pattern;
  * #%L
  * rapidoid-commons
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -141,14 +142,22 @@ public class Str extends RapidoidThing {
 		StringBuilder sb = new StringBuilder();
 
 		boolean first = true;
+		int index = 0;
 		for (Map.Entry<?, ?> e : items.entrySet()) {
+
 			if (!first) {
 				sb.append(sep);
 			}
 
-			sb.append(U.frmt(itemFormat, e.getKey(), e.getValue()));
+			String s = itemFormat
+				.replaceAll(Pattern.quote("${key}"), String.valueOf(e.getKey()))
+				.replaceAll(Pattern.quote("${value}"), String.valueOf(e.getValue()))
+				.replaceAll(Pattern.quote("${index}"), String.valueOf(index));
+
+			sb.append(s);
 
 			first = false;
+			index++;
 		}
 
 		return sb.toString();
@@ -280,4 +289,20 @@ public class Str extends RapidoidThing {
 		return "(?:" + sb + ")";
 	}
 
+	public static List<String> linesOf(String s) {
+		return U.list(s.split("\\n"));
+	}
+
+	public static List<String> grep(String regex, Iterable<String> lines) {
+		List<String> matching = U.list();
+		Pattern p = Pattern.compile(regex);
+
+		for (String line : lines) {
+			if (p.matcher(line).find()) {
+				matching.add(line);
+			}
+		}
+
+		return matching;
+	}
 }

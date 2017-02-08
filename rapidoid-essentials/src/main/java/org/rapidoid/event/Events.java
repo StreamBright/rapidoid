@@ -4,7 +4,7 @@ package org.rapidoid.event;
  * #%L
  * rapidoid-essentials
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ package org.rapidoid.event;
  */
 public enum Events implements Event {
 
-	LOG_TRACE, LOG_DEBUG, LOG_INFO, LOG_WARN, LOG_ERROR,
+	LOG_TRACE, LOG_DEBUG, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL,
 
 	SESSION_LOAD, SESSION_SAVE, SESSION_SERIALIZE, SESSION_DESERIALIZE, SESSION_CONCURRENT_ACCESS;
 

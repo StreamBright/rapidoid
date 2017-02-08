@@ -4,7 +4,7 @@ package org.rapidoid.http;
  * #%L
  * rapidoid-integration-tests
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,6 +34,7 @@ import org.rapidoid.fluent.Do;
 import org.rapidoid.io.IO;
 import org.rapidoid.jpa.JPA;
 import org.rapidoid.jpa.JPAUtil;
+import org.rapidoid.lambda.F3;
 import org.rapidoid.log.Log;
 import org.rapidoid.reverseproxy.ProxyMapping;
 import org.rapidoid.reverseproxy.Reverse;
@@ -42,12 +43,15 @@ import org.rapidoid.setup.Admin;
 import org.rapidoid.setup.App;
 import org.rapidoid.setup.My;
 import org.rapidoid.setup.On;
-import org.rapidoid.test.RapidoidTest;
+import org.rapidoid.test.RapidoidIntegrationTest;
 import org.rapidoid.test.TestCommons;
 import org.rapidoid.u.U;
 import org.rapidoid.util.Msc;
 
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.util.Collections;
 import java.util.List;
@@ -61,9 +65,9 @@ public abstract class IsolatedIntegrationTest extends TestCommons {
 	// FIXME HEAD
 	private static final List<String> HTTP_VERBS = U.list("GET", "DELETE", "OPTIONS", "TRACE", "POST", "PUT", "PATCH");
 
-	public static final int DEFAULT_PORT = 8888;
+	public static final int DEFAULT_PORT = 8080;
 
-	public static final String LOCALHOST = "http://localhost:8888";
+	public static final String LOCALHOST = "http://localhost:8080";
 
 	@Before
 	public void openContext() {
@@ -72,7 +76,7 @@ public abstract class IsolatedIntegrationTest extends TestCommons {
 		ClasspathUtil.setRootPackage("some.nonexisting.app");
 
 		RapidoidModules.getAll(); // all modules must be present
-		RapidoidTest.before(this);
+		RapidoidIntegrationTest.before(this);
 
 		JPAUtil.reset();
 
@@ -118,7 +122,7 @@ public abstract class IsolatedIntegrationTest extends TestCommons {
 
 		System.out.println("--- SERVER STOPPED ---");
 
-		RapidoidTest.after(this);
+		RapidoidIntegrationTest.after(this);
 	}
 
 	protected String localhost(String uri) {
@@ -313,10 +317,14 @@ public abstract class IsolatedIntegrationTest extends TestCommons {
 		req.raw(true);
 
 		String resp = new String(req.execute().raw());
-		resp = resp.replaceFirst("Date: .*? GMT", "Date: XXXXX GMT");
+		resp = maskHttpResponse(resp);
 
 		req.raw(false);
 		return resp;
+	}
+
+	protected String maskHttpResponse(String resp) {
+		return resp.replaceAll("(?<=\n)Date: .*? GMT(?=\r?\n)", "Date: XXXXX GMT");
 	}
 
 	protected String fetch(HttpClient client, String verb, String uri, Map<String, ?> data) {
@@ -374,4 +382,7 @@ public abstract class IsolatedIntegrationTest extends TestCommons {
 		return Reverse.proxy().map(match).to(upstreams);
 	}
 
+	protected <T> T connect(F3<T, InputStream, BufferedReader, DataOutputStream> protocol) {
+		return Msc.connect("localhost", 8080, 1000, protocol);
+	}
 }

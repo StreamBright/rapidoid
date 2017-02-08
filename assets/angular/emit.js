@@ -1,21 +1,24 @@
-Rapidoid.initializer(function($scope) {
+Rapidoid.initializer(function ($scope) {
 
-    $scope._emit = function(event, eventId, eventArgs) {
+    $scope._emit = function (event, eventId, eventArgs) {
+
+        event.preventDefault();
+        event.stopPropagation();
 
         var btn = $(event.currentTarget);
         var confirm = btn.data("confirm");
 
         if (confirm) {
             swal({
-              title: "Are you sure?",
-              text: confirm,
-              type: "warning",
-              showCancelButton: true,
-              confirmButtonColor: "#DD6B55",
-              confirmButtonText: "Yes!",
-              closeOnConfirm: true
-            }, function(){
-               doEmit(event, eventId, eventArgs);
+                title: "Are you sure?",
+                text: confirm,
+                type: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#DD6B55",
+                confirmButtonText: "Yes!",
+                closeOnConfirm: true
+            }, function () {
+                doEmit(event, eventId, eventArgs);
             });
 
         } else {
@@ -23,16 +26,6 @@ Rapidoid.initializer(function($scope) {
         }
 
     };
-
-    function onServerError(data) {
-        $('i:last-child', btn).remove();
-
-        var title = data.status ? "Server error: " + data.status + "!" : "Cannot connect to the server!";
-        var msg = data.statusText != "error" ? data.statusText : "";
-
-        swal(title, msg, "error");
-        console.log(data);
-    }
 
     function doEmit(event, eventId, eventArgs) {
 
@@ -99,18 +92,35 @@ Rapidoid.initializer(function($scope) {
         btn.append(' <i class="fa fa-refresh fa-spin"></i>');
 
         var loc = Rapidoid.location || window.location.href;
-        $.post(loc, inputs).done(function(data) {
+        $.post(loc, inputs).done(function (data, textStatus, request) {
 
             if (typeof data === 'string' || data instanceof String) {
 
-                if (go && data.indexOf('class="field-error"') < 0) {
-                    Rapidoid.goAt(go);
+                if (data.indexOf('class="field-error"') < 0) {
+
+                    var redir = request.getResponseHeader('X-Rapidoid-Redirect');
+
+                    if (redir) {
+                        Rapidoid.goAt(redir);
+                        return;
+
+                    } else {
+                        if (go) {
+                            Rapidoid.goAt(go);
+                            return;
+
+                        } else {
+                            inputs.__event__ = true;
+
+                            $.get(loc, inputs).done(function (data) {
+                                Rapidoid.setHtml(data);
+                            }).fail(Rapidoid.onServerError);
+
+                        }
+                    }
+
                 } else {
-
-                    $.get(loc, {__event__: true}).done(function(data) {
-                        Rapidoid.setHtml(data);
-                    }).fail(onServerError);
-
+                    Rapidoid.setHtml(data);
                 }
 
                 return;
@@ -128,7 +138,7 @@ Rapidoid.initializer(function($scope) {
             if (data["!errors"]) {
                 $('.field-error').html('');
                 errors = data["!errors"];
-                for ( var h in errors) {
+                for (var h in errors) {
                     var err = errors[h];
 
                     var x = document.querySelectorAll("input,textarea,option");
@@ -147,19 +157,19 @@ Rapidoid.initializer(function($scope) {
                     return;
                 }
 
-                for ( var sel in data._sel_) {
+                for (var sel in data._sel_) {
 //                    if (sel == 'body') {
 //
 //                        $scope.ajaxBodyContent = data._sel_[sel];
 //                        $scope.$apply();
 //
 //                    } else {
-                        swal('Selector not supported: ' + sel);
+                    swal('Selector not supported: ' + sel);
 //                    }
                 }
             }
 
-        }).fail(onServerError);
+        }).fail(Rapidoid.onServerError);
     }
 
 });

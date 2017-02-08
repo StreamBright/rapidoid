@@ -4,7 +4,7 @@ package org.rapidoid.http.processor;
  * #%L
  * rapidoid-http-fast
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,8 +22,9 @@ package org.rapidoid.http.processor;
 
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
+import org.rapidoid.http.HttpUtils;
 import org.rapidoid.http.MediaType;
-import org.rapidoid.http.impl.HttpIO;
+import org.rapidoid.http.impl.lowlevel.HttpIO;
 import org.rapidoid.net.abstracts.Channel;
 import org.rapidoid.net.impl.RapidoidHelper;
 import org.rapidoid.render.Templates;
@@ -45,12 +46,11 @@ public class NotFoundHttpProcessor extends AbstractHttpProcessor {
 	public void onRequest(Channel channel, RapidoidHelper data) {
 		boolean isKeepAlive = data.isKeepAlive.value;
 
-		HttpIO.startResponse(channel, 404, isKeepAlive, MediaType.HTML_UTF_8);
-
 		String content = Templates.load("404.html").render(MODEL);
-		HttpIO.writeContentLengthAndBody(channel, content.getBytes());
 
-		HttpIO.done(channel, isKeepAlive);
+		HttpIO.INSTANCE.respond(HttpUtils.noReq(), channel, -1, 404, isKeepAlive, MediaType.HTML_UTF_8, content.getBytes(), null, null);
+
+		channel.send().closeIf(!isKeepAlive);
 	}
 
 }

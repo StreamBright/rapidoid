@@ -10,7 +10,7 @@ import java.nio.ByteBuffer;
  * #%L
  * rapidoid-buffer
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,25 +32,30 @@ public class ByteBufferBytes extends RapidoidThing implements Bytes {
 
 	private ByteBuffer buf;
 
+	private int offset;
+	private int limit;
+
 	public ByteBufferBytes() {
 	}
 
 	public ByteBufferBytes(ByteBuffer buf) {
-		this.buf = buf;
+		setTarget(buf, buf.position(), buf.limit());
 	}
 
 	@Override
 	public byte get(int position) {
-		return buf.get(position);
+		return buf.get(position + offset);
 	}
 
 	@Override
 	public int limit() {
-		return buf.limit();
+		return limit;
 	}
 
-	public void setBuf(ByteBuffer buf) {
+	public void setTarget(ByteBuffer buf, int offset, int limit) {
 		this.buf = buf;
+		this.offset = offset;
+		this.limit = limit;
 	}
 
 }

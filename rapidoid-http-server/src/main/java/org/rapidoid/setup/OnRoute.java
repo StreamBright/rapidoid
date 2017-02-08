@@ -18,7 +18,7 @@ import java.util.concurrent.Callable;
  * #%L
  * rapidoid-http-server
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -400,6 +400,15 @@ public class OnRoute extends RapidoidThing {
 	public OnRoute managed(boolean managed) {
 		options.managed(managed);
 		return this;
+	}
+
+	public OnRoute cacheTTL(long cacheTTL) {
+		options.cacheTTL(cacheTTL);
+		return this;
+	}
+
+	public RouteOptions options() {
+		return options;
 	}
 
 }

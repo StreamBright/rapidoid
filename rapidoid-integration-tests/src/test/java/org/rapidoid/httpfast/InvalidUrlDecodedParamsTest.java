@@ -13,7 +13,7 @@ import org.rapidoid.util.Msc;
  * #%L
  * rapidoid-integration-tests
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,7 +37,7 @@ public class InvalidUrlDecodedParamsTest extends IsolatedIntegrationTest {
 	public void testWithInvalidEncoding() {
 		On.get("/").json(req -> U.map("uri", req.uri(), "query", req.query(), "data", req.data()));
 
-		String resp = Msc.connect("localhost", 8888, (in, reader, out) -> {
+		String resp = Msc.connect("localhost", 8080, (in, reader, out) -> {
 			out.writeBytes("GET /?a=[%A%]&b=bb!&c=%&d=%% HTTP/1.0\n\n");
 			return Flow.of(reader.lines()).findLast().get();
 		});

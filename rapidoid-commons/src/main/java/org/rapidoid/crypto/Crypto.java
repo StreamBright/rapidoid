@@ -1,6 +1,5 @@
 package org.rapidoid.crypto;
 
-import org.netnix.AES;
 import org.rapidoid.RapidoidThing;
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
@@ -10,7 +9,11 @@ import org.rapidoid.log.Log;
 import org.rapidoid.u.U;
 
 import javax.crypto.Cipher;
+import javax.crypto.Mac;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.spec.SecretKeySpec;
 import javax.xml.bind.DatatypeConverter;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -21,7 +24,7 @@ import java.util.Arrays;
  * #%L
  * rapidoid-commons
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,9 +46,15 @@ public class Crypto extends RapidoidThing {
 
 	public static final SecureRandom RANDOM = new SecureRandom();
 
-	private static volatile byte[] secretKey;
+	private static final AESCypherTool AES = new AESCypherTool();
 
-	private static final byte[] DEFAULT_PBKDF2_SALT = {
+	private static final String HMAC_SHA_256 = "HmacSHA256";
+
+	static final int HMAC_KEY_LENGTH = 256; // bits
+
+	private static volatile CryptoKey secretKey;
+
+	static final byte[] DEFAULT_PBKDF2_SALT = {
 		0, -3, -76, 48, 23, 1, 43, -41, -120, 45, -92, -113, -100, 70, -68, -46, 96, -93, 15, 99
 	};
 
@@ -123,51 +132,46 @@ public class Crypto extends RapidoidThing {
 		return sha512(data.getBytes());
 	}
 
-	public static synchronized byte[] getSecretKey() {
+	public static synchronized CryptoKey getSecretKey() {
 		if (secretKey == null) {
 			initSecret();
 		}
 
-		U.notNull(secretKey, "app secret key");
+		U.notNull(secretKey, "secret key");
 		return secretKey;
 	}
 
 	private static synchronized void initSecret() {
 		String secret = Conf.ROOT.entry("secret").str().getOrNull();
 
+		char[] src;
 		if (secret == null) {
 			Log.warn("!Application secret was not specified, generating random secret!");
 
-			byte[] rnd = new byte[128];
-			RANDOM.nextBytes(rnd);
-			secretKey = Crypto.pbkdf2(Str.toHex(rnd));
+			src = Str.toHex(randomBytes(128)).toCharArray();
 
 		} else {
-			secretKey = Crypto.pbkdf2(secret);
+			src = secret.toCharArray();
 		}
-	}
 
-	public static byte[] randomBytes(int byteCount) {
-		byte[] bytes = new byte[byteCount];
-		RANDOM.nextBytes(bytes);
-		return bytes;
+		secretKey = CryptoKey.from(src);
 	}
 
 	public static String randomStr(int byteCount) {
 		return DatatypeConverter.printHexBinary(randomBytes(byteCount));
 	}
 
-	public static byte[] encrypt(byte[] data, byte[] secret) {
+	public static byte[] encrypt(byte[] data, CryptoKey key) {
 		try {
-			return AES.encrypt(data, secret);
+			return AES.encrypt(data, key);
 		} catch (Exception e) {
 			throw U.rte(e);
 		}
 	}
 
-	public static byte[] decrypt(byte[] data, byte[] secret) {
+	public static byte[] decrypt(byte[] data, CryptoKey key) {
 		try {
-			return AES.decrypt(data, secret);
+			return AES.decrypt(data, key);
 		} catch (Exception e) {
 			throw U.rte(e);
 		}
@@ -181,27 +185,26 @@ public class Crypto extends RapidoidThing {
 		return decrypt(data, getSecretKey());
 	}
 
-	public static byte[] pbkdf2(String password, byte[] salt, int iterations, int length) {
+	public static byte[] pbkdf2(char[] password, byte[] salt, int iterations, int length) {
 		try {
-			return AES.generateKey(password, salt, iterations, length);
+			PBEKeySpec keySpec = new PBEKeySpec(password, salt, iterations, length);
+
+			return getPBKDFInstance().generateSecret(keySpec).getEncoded();
+
 		} catch (Exception e) {
 			throw U.rte(e);
 		}
 	}
 
-	public static byte[] pbkdf2(String password) {
-		return pbkdf2(password, DEFAULT_PBKDF2_SALT, 100000, 256);
-	}
-
-	public static String passwordHash(String password) {
+	public static String passwordHash(char[] password) {
 		return passwordHash(password, 100000);
 	}
 
-	public static String passwordHash(String password, int iterations) {
-		return passwordHash(password, iterations, randomSalt());
+	public static String passwordHash(char[] password, int iterations) {
+		return passwordHash(password, iterations, randomBytes(20));
 	}
 
-	public static String passwordHash(String password, int iterations, byte[] salt) {
+	public static String passwordHash(char[] password, int iterations, byte[] salt) {
 		byte[] hash = pbkdf2(password, salt, iterations, 256);
 		return Str.toBase64(hash) + "$" + Str.toBase64(salt) + "$" + iterations;
 	}
@@ -223,14 +226,32 @@ public class Crypto extends RapidoidThing {
 			return false;
 		}
 
-		byte[] realHash = pbkdf2(password, salt, iterations, 256);
+		byte[] realHash = pbkdf2(password.toCharArray(), salt, iterations, 256);
 		return Arrays.equals(expectedHash, realHash);
 	}
 
-	public static byte[] randomSalt() {
-		byte[] salt = new byte[20];
-		Crypto.RANDOM.nextBytes(salt);
-		return salt;
+	public static byte[] randomBytes(int byteCount) {
+		byte[] bytes = new byte[byteCount];
+		RANDOM.nextBytes(bytes);
+		return bytes;
+	}
+
+	public static byte[] hmac(byte[] data, byte[] secret, byte[] salt) throws Exception {
+		Mac m = Mac.getInstance(HMAC_SHA_256);
+		m.init(new SecretKeySpec(secret, HMAC_SHA_256));
+		return m.doFinal(data);
+	}
+
+	public static boolean hmacMatches(byte[] hmac, byte[] data, byte[] secret, byte[] salt) throws Exception {
+		return MessageDigest.isEqual(hmac, Crypto.hmac(data, secret, salt));
+	}
+
+	private static SecretKeyFactory getPBKDFInstance() throws NoSuchAlgorithmException {
+		try {
+			return SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+		} catch (NoSuchAlgorithmException e) {
+			return SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
+		}
 	}
 
 }

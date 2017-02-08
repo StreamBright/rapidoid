@@ -4,7 +4,7 @@ package org.rapidoid;
  * #%L
  * rapidoid-commons
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,10 +27,8 @@ import org.rapidoid.annotation.Since;
 @Since("5.3.0")
 public interface RapidoidModule {
 
-	String name();
+	void beforeTest(Object test);
 
-	void beforeTest(Object test, boolean isIntegrationTest);
-
-	void afterTest(Object test, boolean isIntegrationTest);
+	void afterTest(Object test);
 
 }

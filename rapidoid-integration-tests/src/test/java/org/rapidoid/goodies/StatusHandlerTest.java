@@ -4,7 +4,7 @@ package org.rapidoid.goodies;
  * #%L
  * rapidoid-integration-tests
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,7 +49,7 @@ public class StatusHandlerTest extends IsolatedIntegrationTest {
 	public void testAppSetup() throws Exception {
 		Env.reset();
 
-		App.args(new String[0], "profiles=mysql", "mode=production");
+		App.run(new String[0], "profiles=mysql", "mode=production");
 		Conf.ROOT.set("id", "rpd123");
 		ClasspathUtil.appJar("/a/b.jar");
 

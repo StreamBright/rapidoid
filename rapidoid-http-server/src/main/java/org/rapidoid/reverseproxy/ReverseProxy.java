@@ -4,7 +4,7 @@ import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
 import org.rapidoid.concurrent.Callback;
 import org.rapidoid.http.*;
-import org.rapidoid.http.impl.HttpIO;
+import org.rapidoid.http.impl.lowlevel.HttpIO;
 import org.rapidoid.log.LogLevel;
 import org.rapidoid.u.U;
 
@@ -16,7 +16,7 @@ import java.util.Map;
  * #%L
  * rapidoid-http-server
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -67,18 +67,25 @@ public class ReverseProxy extends AbstractReverseProxyBean<ReverseProxy> impleme
 				public void onDone(HttpResp result, Throwable error) {
 					if (error == null) {
 
-						processResponseHeaders(result.headers(), resp);
-
 						resp.code(result.code());
 						resp.body(result.bodyBytes());
+
+						// process the response headers
+						SimpleHttpResp proxyResp = new SimpleHttpResp();
+						HttpUtils.proxyResponseHeaders(result.headers(), proxyResp);
+
+						if (proxyResp.contentType != null) resp.contentType(proxyResp.contentType);
+						if (proxyResp.headers != null) resp.headers().putAll(proxyResp.headers);
+						if (proxyResp.cookies != null) resp.cookies().putAll(proxyResp.cookies);
+
 						resp.done();
 
 					} else {
 
 						if (error instanceof ConnectException) {
-							HttpIO.errorAndDone(req, U.rte("Couldn't connect to the upstream!", error), LogLevel.DEBUG);
+							HttpIO.INSTANCE.errorAndDone(req, U.rte("Couldn't connect to the upstream!", error), LogLevel.DEBUG);
 						} else {
-							HttpIO.errorAndDone(req, error, LogLevel.ERROR);
+							HttpIO.INSTANCE.errorAndDone(req, error, LogLevel.ERROR);
 						}
 					}
 				}
@@ -96,29 +103,6 @@ public class ReverseProxy extends AbstractReverseProxyBean<ReverseProxy> impleme
 		}
 
 		return null;
-	}
-
-	protected void processResponseHeaders(Map<String, String> headers, Resp resp) {
-		for (Map.Entry<String, String> hdr : headers.entrySet()) {
-			String name = hdr.getKey();
-			String value = hdr.getValue();
-			String lowerName = name.toLowerCase();
-
-			if (lowerName.equals("content-type")) {
-				resp.contentType(MediaType.of(value));
-
-			} else if (!ignoreResponseHeader(lowerName)) {
-				resp.headers().put(name, value);
-			}
-		}
-	}
-
-	protected boolean ignoreResponseHeader(String name) {
-		return name.equals("transfer-encoding")
-			|| name.equals("content-length")
-			|| name.equals("connection")
-			|| name.equals("date")
-			|| name.equals("server");
 	}
 
 	@Override

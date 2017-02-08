@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * #%L
  * rapidoid-net
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -190,20 +190,13 @@ public abstract class DefaultExchange<T> extends RapidoidThing implements Protoc
 	}
 
 	@Override
-	public T async() {
-		conn.async();
-		return me();
+	public long async() {
+		return conn.async();
 	}
 
 	@Override
 	public boolean isAsync() {
 		return conn.isAsync();
-	}
-
-	@Override
-	public T done() {
-		conn.done();
-		return me();
 	}
 
 	@SuppressWarnings("unchecked")

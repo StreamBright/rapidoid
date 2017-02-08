@@ -8,6 +8,7 @@ import org.rapidoid.log.Log;
 import org.rapidoid.u.U;
 
 import java.lang.annotation.Annotation;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
@@ -15,7 +16,7 @@ import java.util.List;
  * #%L
  * rapidoid-commons
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,6 +47,10 @@ public class ScanParams extends RapidoidThing {
 	public synchronized ScanParams in(String... packages) {
 		this.packages = packages;
 		return this;
+	}
+
+	public synchronized ScanParams in(Iterable<String> packages) {
+		return in(U.arrayOf(String.class, packages));
 	}
 
 	public synchronized String[] in() {
@@ -101,4 +106,27 @@ public class ScanParams extends RapidoidThing {
 			}
 		}
 	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		ScanParams that = (ScanParams) o;
+
+		if (!Arrays.equals(packages, that.packages)) return false;
+		if (matching != null ? !matching.equals(that.matching) : that.matching != null) return false;
+		if (!Arrays.equals(annotated, that.annotated)) return false;
+		return classLoader != null ? classLoader.equals(that.classLoader) : that.classLoader == null;
+	}
+
+	@Override
+	public int hashCode() {
+		int result = Arrays.hashCode(packages);
+		result = 31 * result + (matching != null ? matching.hashCode() : 0);
+		result = 31 * result + Arrays.hashCode(annotated);
+		result = 31 * result + (classLoader != null ? classLoader.hashCode() : 0);
+		return result;
+	}
+
 }

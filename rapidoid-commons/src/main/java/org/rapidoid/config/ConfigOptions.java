@@ -1,6 +1,8 @@
 package org.rapidoid.config;
 
 import org.rapidoid.RapidoidThing;
+import org.rapidoid.annotation.Authors;
+import org.rapidoid.annotation.Since;
 import org.rapidoid.u.U;
 
 import java.util.List;
@@ -10,7 +12,7 @@ import java.util.Set;
  * #%L
  * rapidoid-commons
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,10 +28,8 @@ import java.util.Set;
  * #L%
  */
 
-/**
- * @author Nikolche Mihajlovski
- * @since 5.0.2
- */
+@Authors("Nikolche Mihajlovski")
+@Since("5.0.2")
 public class ConfigOptions extends RapidoidThing {
 
 	public static final Set<String> SERVICE_NAMES = U.set();
@@ -59,12 +59,6 @@ public class ConfigOptions extends RapidoidThing {
 		opts.add(opt("app.services=<S1,S2...>", "comma-separated list of services to bootstrap on the App server", "none"));
 		opts.add(opt("admin.services=<S1,S2...>", "comma-separated list of services to bootstrap on the Admin server", "none"));
 
-//		opts.add(opt("cpus=<C>", "optimize for C number of CPUs", "the actual number of the CPUs"));
-//		opts.add(opt("workers=<W>", "start W number of I/O workers", "the configured number of CPUs - cpus options"));
-//		opts.add(opt("nodelay", "set the TCP_NODELAY flag to disable Nagle's algorithm", false));
-//		opts.add(opt("blockingAccept", "accept connection in BLOCKING mode", false));
-//		opts.add(opt("bufSizeKB=<SIZE>", "TCP socket buffer size in KB", 16));
-
 		return opts;
 	}
 
@@ -72,18 +66,21 @@ public class ConfigOptions extends RapidoidThing {
 		List<ConfigOption> opts = U.list();
 
 		opts.add(srvOpt("center", "Admin Center"));
-		opts.add(srvOpt("ping", "Ping service"));
-		opts.add(srvOpt("status", "Status service"));
-		opts.add(srvOpt("overview", "Overview service"));
-		opts.add(srvOpt("application", "Application services"));
-		opts.add(srvOpt("lifecycle", "Lifecycle services"));
-		opts.add(srvOpt("jmx", "JMX services"));
-		opts.add(srvOpt("metrics", "Metrics services"));
-		opts.add(srvOpt("deploy", "Application deployment services"));
-		opts.add(srvOpt("auth", "Authentication services"));
-		opts.add(srvOpt("oauth", "OAuth services"));
-		opts.add(srvOpt("entities", "JPA Entities services"));
+		opts.add(srvOpt("ping", "Simple ping"));
+		opts.add(srvOpt("status", "Application and system status"));
+		opts.add(srvOpt("overview", "General overview"));
+		opts.add(srvOpt("application", "Application management"));
+		opts.add(srvOpt("lifecycle", "Lifecycle management"));
+		opts.add(srvOpt("processes", "Process management"));
+		opts.add(srvOpt("jmx", "JMX overview"));
+		opts.add(srvOpt("metrics", "Metrics"));
+		opts.add(srvOpt("deploy", "Application deployment"));
+		opts.add(srvOpt("auth", "Authentication"));
+		opts.add(srvOpt("oauth", "OAuth authentication"));
+		opts.add(srvOpt("entities", "JPA entities management"));
 		opts.add(srvOpt("welcome", "Welcome page"));
+		opts.add(srvOpt("discovery", "Peer discovery (transient state)"));
+		opts.add(srvOpt("echo", "Echo of the request (for debugging)"));
 
 		return opts;
 	}

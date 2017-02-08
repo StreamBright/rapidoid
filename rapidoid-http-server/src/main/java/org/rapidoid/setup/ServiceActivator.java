@@ -4,7 +4,7 @@ package org.rapidoid.setup;
  * #%L
  * rapidoid-http-server
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -57,6 +57,7 @@ public class ServiceActivator extends RapidoidThing {
 		if (boot(setupName, "overview")) goodies().overview(setup);
 		if (boot(setupName, "application")) goodies().application(setup);
 		if (boot(setupName, "lifecycle")) goodies().lifecycle(setup);
+		if (boot(setupName, "processes")) goodies().processes(setup);
 		if (boot(setupName, "jmx")) goodies().jmx(setup);
 		if (boot(setupName, "metrics")) goodies().metrics(setup);
 		if (boot(setupName, "deploy")) goodies().deploy(setup);
@@ -67,6 +68,8 @@ public class ServiceActivator extends RapidoidThing {
 		if (boot(setupName, "center")) goodies().adminCenter(setup);
 		if (boot(setupName, "welcome")) goodies().welcome(setup);
 		if (boot(setupName, "status")) goodies().status(setup);
+		if (boot(setupName, "discovery")) goodies().discovery(setup);
+		if (boot(setupName, "echo")) goodies().echo(setup);
 	}
 
 	private static boolean boot(String setupName, String service) {

@@ -1,6 +1,8 @@
 package org.rapidoid.config;
 
 import org.rapidoid.RapidoidThing;
+import org.rapidoid.annotation.Authors;
+import org.rapidoid.annotation.Since;
 import org.rapidoid.commons.RapidoidInfo;
 import org.rapidoid.commons.Str;
 import org.rapidoid.u.U;
@@ -12,7 +14,7 @@ import java.util.List;
  * #%L
  * rapidoid-commons
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,10 +30,8 @@ import java.util.List;
  * #L%
  */
 
-/**
- * @author Nikolche Mihajlovski
- * @since 5.0.2
- */
+@Authors("Nikolche Mihajlovski")
+@Since("5.0.2")
 public class ConfigHelp extends RapidoidThing {
 
 	public static void processHelp(Object[] args) {
@@ -84,7 +84,7 @@ public class ConfigHelp extends RapidoidThing {
 	}
 
 	private static void show(String msg) {
-		System.out.println(msg);
+		U.print(msg);
 	}
 
 }

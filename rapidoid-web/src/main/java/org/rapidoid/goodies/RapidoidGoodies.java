@@ -10,7 +10,7 @@ import org.rapidoid.setup.Setup;
  * #%L
  * rapidoid-web
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,6 +43,11 @@ public class RapidoidGoodies extends RapidoidThing implements IGoodies {
 	@Override
 	public void lifecycle(Setup setup) {
 		Goodies.lifecycle(setup);
+	}
+
+	@Override
+	public void processes(Setup setup) {
+		Goodies.processes(setup);
 	}
 
 	@Override
@@ -93,5 +98,15 @@ public class RapidoidGoodies extends RapidoidThing implements IGoodies {
 	@Override
 	public void status(Setup setup) {
 		Goodies.status(setup);
+	}
+
+	@Override
+	public void discovery(Setup setup) {
+		Goodies.discovery(setup);
+	}
+
+	@Override
+	public void echo(Setup setup) {
+		Goodies.echo(setup);
 	}
 }

@@ -4,7 +4,7 @@ package org.rapidoid.http;
  * #%L
  * rapidoid-http-fast
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,10 @@ package org.rapidoid.http;
 
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
+import org.rapidoid.cache.Cache;
 import org.rapidoid.http.handler.HttpHandler;
+import org.rapidoid.http.impl.CachedResp;
+import org.rapidoid.http.impl.HTTPCacheKey;
 
 @Authors("Nikolche Mihajlovski")
 @Since("5.1.0")
@@ -36,4 +39,5 @@ public interface Route {
 
 	RouteConfig config();
 
+	Cache<HTTPCacheKey, CachedResp> cache();
 }

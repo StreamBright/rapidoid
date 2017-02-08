@@ -4,7 +4,7 @@ package org.rapidoid.http;
  * #%L
  * rapidoid-integration-tests
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -75,7 +75,7 @@ public class HttpPojoControllerTest extends IsolatedIntegrationTest {
 	public void testPojoHandlersWithIoC() {
 		notFound("/b");
 
-		List<String> ctrls = Scan.annotated(MyTestController.class).in("pkg1", "pkg2").getAll();
+		List<String> ctrls = Scan.annotated(MyTestController.class).in(U.list("pkg1", "pkg2")).getAll();
 		isTrue(ctrls.isEmpty());
 
 		List<String> ctrls2 = Scan.annotated(MyTestController.class, Generated.class).in(App.path()).getAll();

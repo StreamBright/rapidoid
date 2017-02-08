@@ -1,12 +1,14 @@
 package org.rapidoid.config;
 
 import org.rapidoid.RapidoidThing;
+import org.rapidoid.annotation.Authors;
+import org.rapidoid.annotation.Since;
 
 /*
  * #%L
  * rapidoid-commons
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,10 +24,8 @@ import org.rapidoid.RapidoidThing;
  * #L%
  */
 
-/**
- * @author Nikolche Mihajlovski
- * @since 5.0.2
- */
+@Authors("Nikolche Mihajlovski")
+@Since("5.0.2")
 public class ConfigOption extends RapidoidThing {
 
 	public final String name;

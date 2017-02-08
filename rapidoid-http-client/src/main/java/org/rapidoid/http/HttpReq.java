@@ -19,7 +19,7 @@ import java.util.Map;
  * #%L
  * rapidoid-http-client
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -227,7 +227,12 @@ public class HttpReq extends RapidoidThing {
 	}
 
 	public Expectation expect() {
-		return new Expectation(parse());
+		return new Expectation(fetch());
+	}
+
+	public HttpReq expect(String expectedValue) {
+		expect().value(expectedValue);
+		return this;
 	}
 
 	public <T> T toBean(Class<T> beanClass) {

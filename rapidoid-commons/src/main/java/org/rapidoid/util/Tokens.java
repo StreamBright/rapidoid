@@ -18,7 +18,7 @@ import java.util.Set;
  * #%L
  * rapidoid-commons
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -72,7 +72,7 @@ public class Tokens extends RapidoidThing {
 		if (!U.isEmpty(token)) {
 			byte[] decoded = Str.fromBase64(token.replace('$', '+').replace('_', '/'));
 			byte[] tokenDecrypted = Crypto.decrypt(decoded);
-			return (Map<String, Serializable>) Serialize.deserialize(tokenDecrypted);
+			return tokenDecrypted != null ? (Map<String, Serializable>) Serialize.deserialize(tokenDecrypted) : null;
 		} else {
 			return null;
 		}

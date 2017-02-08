@@ -4,7 +4,7 @@ package org.rapidoid.buffer;
  * #%L
  * rapidoid-buffer
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ public class StatisticalBufTest extends BufferTestCommons {
 
 	@Test
 	public void shouldExpandAndShrink() {
-		BufGroup bufs = new BufGroup(2);
+		BufGroup bufs = new BufGroup(4);
 		Buf buf = bufs.newBuf("");
 		String copy = "";
 		String s;

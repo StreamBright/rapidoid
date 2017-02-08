@@ -4,7 +4,7 @@ package org.rapidoid.http;
  * #%L
  * rapidoid-web
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,8 +40,8 @@ public class HttpServerTest extends HttpTestCommons {
 			}
 		});
 
-		eq(HTTP.get("http://localhost:8888/").fetch(), "home");
-		eq(HTTP.post("http://localhost:8888/").fetch(), "\"abc\"");
+		eq(HTTP.get("http://localhost:8080/").fetch(), "home");
+		eq(HTTP.post("http://localhost:8080/").fetch(), "\"abc\"");
 	}
 
 }

@@ -4,7 +4,7 @@ package org.rapidoid.http;
  * #%L
  * rapidoid-integration-tests
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,12 +36,7 @@ public class HttpFullRawResponseTest extends IsolatedIntegrationTest {
 
 	@Test
 	public void testBytesRawResponse() {
-		On.get("/bytes").html(new ReqHandler() {
-			@Override
-			public Object execute(Req req) throws Exception {
-				return req.response().raw(BYTES_RESPONSE.getBytes());
-			}
-		});
+		On.get("/bytes").html(req -> req.response().raw(BYTES_RESPONSE.getBytes()));
 
 		onlyGet("/bytes");
 	}

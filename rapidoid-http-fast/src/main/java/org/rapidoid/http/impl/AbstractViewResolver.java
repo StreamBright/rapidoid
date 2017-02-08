@@ -4,7 +4,7 @@ package org.rapidoid.http.impl;
  * #%L
  * rapidoid-http-fast
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -76,4 +76,9 @@ public abstract class AbstractViewResolver<T> extends RapidoidThing implements V
 	public void setExtension(String extension) {
 		this.extension = extension;
 	}
+
+	public synchronized void reset() {
+		factoriesPerLoader.clear();
+	}
+
 }

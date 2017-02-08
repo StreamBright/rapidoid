@@ -4,7 +4,7 @@ package org.rapidoid.log;
  * #%L
  * rapidoid-essentials
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,7 +29,13 @@ import org.rapidoid.event.Events;
  */
 public enum LogLevel {
 
-	TRACE(Events.LOG_TRACE), DEBUG(Events.LOG_DEBUG), INFO(Events.LOG_INFO), WARN(Events.LOG_WARN), ERROR(Events.LOG_ERROR);
+	TRACE(Events.LOG_TRACE),
+	DEBUG(Events.LOG_DEBUG),
+	INFO(Events.LOG_INFO),
+	WARN(Events.LOG_WARN),
+	ERROR(Events.LOG_ERROR),
+	FATAL(Events.LOG_FATAL),
+	NO_LOGS(null);
 
 	private final Event event;
 

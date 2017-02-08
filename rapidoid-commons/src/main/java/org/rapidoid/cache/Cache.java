@@ -4,7 +4,7 @@ package org.rapidoid.cache;
  * #%L
  * rapidoid-commons
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,16 +20,35 @@ package org.rapidoid.cache;
  * #L%
  */
 
-import org.rapidoid.RapidoidThing;
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
 
 @Authors("Nikolche Mihajlovski")
 @Since("5.3.0")
-public class Cache extends RapidoidThing {
+public interface Cache<K, V> {
 
-	public static <K, V> CacheDSL<K, V> of(org.rapidoid.lambda.Mapper<K, V> of) {
-		return new CacheDSL<K, V>().of(of);
-	}
+	/**
+	 * Returns the cached value for the given key, recalculating/reloading it if expired.
+	 */
+	V get(K key);
 
+	/**
+	 * Retrieves the cached value for the given key if it exists, or <code>null</code> otherwise.
+	 */
+	V getIfExists(K key);
+
+	/**
+	 * Invalidates the cached value for the given key.
+	 */
+	void invalidate(K key);
+
+	/**
+	 * Sets a new cached value for the given key.
+	 */
+	void set(K key, V value);
+
+	/**
+	 * Clears the cache.
+	 */
+	void clear();
 }

@@ -4,7 +4,7 @@ package org.rapidoid;
  * #%L
  * rapidoid-http-server
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,6 @@ package org.rapidoid;
 
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
-import org.rapidoid.env.Env;
 import org.rapidoid.config.Conf;
 import org.rapidoid.config.Config;
 import org.rapidoid.crypto.Crypto;
@@ -36,15 +35,14 @@ public class AuthBootstrap extends RapidoidThing {
 	private static volatile String generatedAdminPassword;
 
 	public static synchronized void bootstrapAdminCredentials() {
-		if (Env.dev()) {
-			Config admin = Conf.USERS.sub("admin");
+		Config admin = Conf.USERS.sub("admin");
 
-			if (!admin.has("password") && !admin.has("hash")) {
-				String pass = generatedAdminPassword();
-				admin.set("password", pass);
+		if (!admin.has("password") && !admin.has("hash")) {
+			String pass = generatedAdminPassword();
+			admin.set("password", pass);
 
-				Msc.logSection("ADMIN CREDENTIALS: username = " + AnsiColor.bold("admin") + ", password = " + AnsiColor.bold(pass));
-			}
+			String maybePass = "" + Msc.maybeMasked(pass);
+			Msc.logSection("ADMIN CREDENTIALS: username = " + AnsiColor.bold("admin") + ", password = " + AnsiColor.bold(maybePass));
 		}
 	}
 

@@ -7,7 +7,7 @@ import org.rapidoid.annotation.Since;
  * #%L
  * rapidoid-watch
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,10 +27,10 @@ import org.rapidoid.annotation.Since;
 @Since("4.1.0")
 public interface FilesystemChangeListener {
 
-	void created(String filename);
+	void created(String filename) throws Exception;
 
-	void modified(String filename);
+	void modified(String filename) throws Exception;
 
-	void deleted(String filename);
+	void deleted(String filename) throws Exception;
 
 }

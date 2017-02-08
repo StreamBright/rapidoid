@@ -5,12 +5,13 @@ import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
 import org.rapidoid.u.U;
 import org.rapidoid.util.AnsiColor;
+import org.rapidoid.util.Msc;
 
 /*
  * #%L
  * rapidoid-http-fast
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,6 +47,10 @@ public class NiceResponse extends RapidoidThing {
 		}
 
 		return details(msg, false);
+	}
+
+	public static Object err(Req req, Throwable err) {
+		return err(req, Msc.errorMsg(err));
 	}
 
 	public static Object deny(Req req) {

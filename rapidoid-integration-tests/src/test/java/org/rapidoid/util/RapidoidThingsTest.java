@@ -4,7 +4,7 @@ package org.rapidoid.util;
  * #%L
  * rapidoid-integration-tests
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,8 @@ package org.rapidoid.util;
  * #L%
  */
 
+import org.apache.commons.logging.LogFactory;
+import org.apache.maven.cli.MavenCli;
 import org.apache.maven.plugin.AbstractMojo;
 import org.hibernate.jpa.HibernatePersistenceProvider;
 import org.junit.Test;
@@ -42,6 +44,7 @@ public class RapidoidThingsTest {
 	public void classesShouldExtendRapidoidThing() {
 		for (String cls : Cls.getRapidoidClasses()) {
 			Class<?> clazz = Cls.get(cls);
+
 			if (!clazz.isInterface() && !clazz.isEnum() && !clazz.isAnnotation()) {
 				U.must(RapidoidThing.class.isAssignableFrom(clazz)
 					|| clazz == TestCommons.class
@@ -53,6 +56,8 @@ public class RapidoidThingsTest {
 					|| Map.class.isAssignableFrom(clazz)
 					|| AbstractMojo.class.isAssignableFrom(clazz)
 					|| DbEntity.class.isAssignableFrom(clazz)
+					|| MavenCli.class.isAssignableFrom(clazz)
+					|| LogFactory.class.isAssignableFrom(clazz)
 					|| Thread.class.isAssignableFrom(clazz), "" + cls);
 			}
 		}

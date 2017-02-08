@@ -4,7 +4,7 @@ package org.rapidoid.ioc.impl;
  * #%L
  * rapidoid-inject
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,28 +23,27 @@ package org.rapidoid.ioc.impl;
 import org.rapidoid.RapidoidModule;
 import org.rapidoid.RapidoidThing;
 import org.rapidoid.annotation.Authors;
+import org.rapidoid.annotation.RapidoidModuleDesc;
 import org.rapidoid.annotation.Since;
 import org.rapidoid.ioc.IoC;
 
 @Authors("Nikolche Mihajlovski")
 @Since("5.3.0")
+@RapidoidModuleDesc(name = "IoC", order = 300)
 public class IoCModule extends RapidoidThing implements RapidoidModule {
 
 	@Override
-	public String name() {
-		return "IoC";
-	}
-
-	@Override
-	public void beforeTest(Object test, boolean isIntegrationTest) {
+	public void beforeTest(Object test) {
 		cleanUp();
 
 		// unsuccessful autowire might have some side-effects
-		if (!IoC.autowire(test)) cleanUp();
+		if (!IoC.autowire(test)) {
+			cleanUp();
+		}
 	}
 
 	@Override
-	public void afterTest(Object test, boolean isIntegrationTest) {
+	public void afterTest(Object test) {
 		cleanUp();
 	}
 

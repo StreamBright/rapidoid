@@ -4,16 +4,18 @@ import org.rapidoid.RapidoidThing;
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
 import org.rapidoid.buffer.Buf;
+import org.rapidoid.buffer.BufUtil;
+import org.rapidoid.cache.Cache;
 import org.rapidoid.cls.Cls;
 import org.rapidoid.collection.ChangeTrackingMap;
 import org.rapidoid.collection.Coll;
-import org.rapidoid.http.MediaType;
 import org.rapidoid.commons.Str;
 import org.rapidoid.http.*;
 import org.rapidoid.http.customize.BeanParameterFactory;
 import org.rapidoid.http.customize.Customization;
 import org.rapidoid.http.customize.JsonRequestBodyParser;
 import org.rapidoid.http.customize.SessionManager;
+import org.rapidoid.http.impl.lowlevel.HttpIO;
 import org.rapidoid.io.Upload;
 import org.rapidoid.log.Log;
 import org.rapidoid.log.LogLevel;
@@ -25,15 +27,15 @@ import org.rapidoid.util.Msc;
 
 import java.io.OutputStream;
 import java.io.Serializable;
+import java.nio.ByteBuffer;
 import java.util.*;
-import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /*
  * #%L
  * rapidoid-http-fast
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,8 +53,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 @Authors("Nikolche Mihajlovski")
 @Since("5.0.2")
-public class ReqImpl extends RapidoidThing implements Req, Constants, HttpMetadata, IRequest {
+public class ReqImpl extends RapidoidThing implements Req, Constants, HttpMetadata, IRequest, MaybeReq {
 
+	public static final long UNDEFINED = Long.MAX_VALUE;
 	private final FastHttp http;
 
 	private final Channel channel;
@@ -97,15 +100,15 @@ public class ReqImpl extends RapidoidThing implements Req, Constants, HttpMetada
 
 	private volatile ChangeTrackingMap<String, Serializable> session;
 
-	final AtomicBoolean sessionChanged = new AtomicBoolean();
+	private final AtomicBoolean sessionChanged = new AtomicBoolean();
 
 	private volatile RespImpl response;
 
 	private volatile boolean rendering;
 
-	private volatile int posConLen;
+	private volatile long posContentLengthValue;
 
-	private volatile int posBefore;
+	private volatile long posBeforeBody = UNDEFINED;
 
 	private volatile boolean async;
 
@@ -122,6 +125,10 @@ public class ReqImpl extends RapidoidThing implements Req, Constants, HttpMetada
 	private final Route route;
 
 	private volatile Customization custom;
+
+	private final HTTPCacheKey cacheKey;
+
+	private final long handle;
 
 	public ReqImpl(FastHttp http, Channel channel, boolean isKeepAlive, String verb, String uri, String path,
 	               String query, byte[] body, Map<String, String> params, Map<String, String> headers,
@@ -147,7 +154,13 @@ public class ReqImpl extends RapidoidThing implements Req, Constants, HttpMetada
 		this.zone = zone;
 		this.routes = routes;
 		this.route = route;
+		this.handle = channel.handle();
 		this.custom = routes != null ? routes.custom() : http.custom();
+		this.cacheKey = createCacheKey();
+	}
+
+	private HTTPCacheKey createCacheKey() {
+		return isCacheable() ? new HTTPCacheKey(host(), uri()) : null;
 	}
 
 	@Override
@@ -237,6 +250,11 @@ public class ReqImpl extends RapidoidThing implements Req, Constants, HttpMetada
 	@Override
 	public String clientIpAddress() {
 		return channel.address();
+	}
+
+	@Override
+	public String realIpAddress() {
+		return HttpUtils.inferRealIpAddress(this);
 	}
 
 	@Override
@@ -420,17 +438,17 @@ public class ReqImpl extends RapidoidThing implements Req, Constants, HttpMetada
 		return response;
 	}
 
-	public void startRendering(int code, boolean unknownContentLength) {
+	public void doRendering(int code, byte[] responseBody) {
 		if (!isRendering()) {
 			synchronized (this) {
 				if (!isRendering()) {
-					startResponse(code, unknownContentLength);
+					respond(code, responseBody);
 				}
 			}
 		}
 	}
 
-	private void startResponse(int code, boolean unknownContentLength) {
+	private void respond(int code, byte[] responseBody) {
 		MediaType contentType = MediaType.HTML_UTF_8;
 
 		if (tokenChanged.get()) {
@@ -445,39 +463,41 @@ public class ReqImpl extends RapidoidThing implements Req, Constants, HttpMetada
 			contentType = U.or(response.contentType(), MediaType.HTML_UTF_8);
 		}
 
-		renderResponseHeaders(code, contentType, unknownContentLength);
+		renderResponse(code, contentType, responseBody);
 	}
 
-	private void renderResponseHeaders(int code, MediaType contentType, boolean unknownContentLength) {
+	private void renderResponse(int code, MediaType contentType, byte[] responseBody) {
 		rendering = true;
-		HttpIO.startResponse(channel, code, isKeepAlive, contentType);
+		completed = responseBody != null;
 
-		if (response != null) {
-			renderCustomHeaders();
-		}
+		HttpIO.INSTANCE.respond(
+			HttpUtils.maybe(this), channel, handle,
+			code, isKeepAlive, contentType, responseBody,
+			response != null ? response.headers() : null,
+			response != null ? response.cookies() : null
+		);
+	}
 
-		if (unknownContentLength) {
-			Buf out = channel.output();
-			HttpIO.writeContentLengthUnknown(channel);
+	public void responded(long posContentLengthValue, long posBeforeBody, boolean completed) {
+		this.posContentLengthValue = posContentLengthValue;
+		this.posBeforeBody = posBeforeBody;
+		this.completed = completed;
+	}
 
-			posConLen = out.size() - 1;
-			channel.write(CR_LF);
-
-			// finishing the headers
-			channel.write(CR_LF);
-
-			posBefore = out.size();
-		}
+	public void onHeadersCompleted() {
+		posBeforeBody = channel.output().size();
 	}
 
 	private void writeResponseLength() {
 		Buf out = channel.output();
 
-		int posAfter = out.size();
-		int contentLength = posAfter - posBefore;
+		long posAfter = out.size();
+		long contentLength = posAfter - posBeforeBody;
 
 		if (!stopped && out.size() > 0) {
-			out.putNumAsText(posConLen, contentLength, false);
+			BufUtil.startWriting(out);
+			out.putNumAsText((int) posContentLengthValue, contentLength, false);
+			BufUtil.doneWriting(out);
 		}
 
 		completed = true;
@@ -485,6 +505,11 @@ public class ReqImpl extends RapidoidThing implements Req, Constants, HttpMetada
 
 	public boolean isRendering() {
 		return rendering;
+	}
+
+	public ReqImpl completed(boolean completed) {
+		this.completed = completed;
+		return this;
 	}
 
 	@Override
@@ -501,8 +526,10 @@ public class ReqImpl extends RapidoidThing implements Req, Constants, HttpMetada
 			return;
 		}
 
+		boolean willBeDone = true;
 		if (!rendering) {
 			renderResponseOrError();
+			willBeDone = false;
 		}
 
 		if (!completed) {
@@ -510,15 +537,16 @@ public class ReqImpl extends RapidoidThing implements Req, Constants, HttpMetada
 			completed = true;
 		}
 
-		finish();
+		if (willBeDone) {
+			HttpIO.INSTANCE.done(ReqImpl.this);
+		}
 	}
 
 	private void renderResponseOrError() {
 		String err = validateResponse();
 
 		if (err != null) {
-			startRendering(500, false);
-			writeContentLengthAndBody(err.getBytes());
+			doRendering(500, err.getBytes());
 
 		} else {
 			renderResponse();
@@ -529,23 +557,23 @@ public class ReqImpl extends RapidoidThing implements Req, Constants, HttpMetada
 		HttpUtils.postProcessResponse(response);
 
 		if (response.raw() != null) {
+			int posBeforeResponse = channel.output().size();
+
 			byte[] bytes = Msc.toBytes(response.raw());
 			channel.write(bytes);
+
+			if (willSaveToCache()) posBeforeBody = posBeforeResponse + HttpUtils.findBodyStart(bytes);
+
 			completed = true;
+			HttpIO.INSTANCE.done(this);
 
 		} else {
 			// first serialize the response to bytes (with error handling)
 			byte[] bytes = responseToBytes();
 
-			// then start rendering
-			startRendering(response.code(), false);
-			writeContentLengthAndBody(bytes);
+			// then rendering
+			doRendering(response.code(), bytes);
 		}
-	}
-
-	private void writeContentLengthAndBody(byte[] bytes) {
-		HttpIO.writeContentLengthAndBody(channel, bytes);
-		completed = true;
 	}
 
 	private byte[] responseToBytes() {
@@ -553,7 +581,7 @@ public class ReqImpl extends RapidoidThing implements Req, Constants, HttpMetada
 			return response.renderToBytes();
 
 		} catch (Throwable e) {
-			HttpIO.error(this, e, LogLevel.ERROR);
+			HttpIO.INSTANCE.error(this, e, LogLevel.ERROR);
 
 			try {
 				return response.renderToBytes();
@@ -580,21 +608,6 @@ public class ReqImpl extends RapidoidThing implements Req, Constants, HttpMetada
 		}
 
 		return null;
-	}
-
-	private void renderCustomHeaders() {
-		for (Entry<String, String> e : response.headers().entrySet()) {
-			HttpIO.addCustomHeader(channel, e.getKey().getBytes(), e.getValue().getBytes());
-		}
-
-		for (Entry<String, String> e : response.cookies().entrySet()) {
-			String cookie = e.getKey() + "=" + e.getValue();
-			HttpIO.addCustomHeader(channel, HttpHeaders.SET_COOKIE.getBytes(), cookie.getBytes());
-		}
-	}
-
-	private void finish() {
-		HttpIO.done(channel, isKeepAlive);
 	}
 
 	@Override
@@ -626,7 +639,9 @@ public class ReqImpl extends RapidoidThing implements Req, Constants, HttpMetada
 	@Override
 	public Req async() {
 		this.async = true;
-		channel.async();
+
+		if (channel.onSameThread()) channel.async();
+
 		return this;
 	}
 
@@ -689,8 +704,8 @@ public class ReqImpl extends RapidoidThing implements Req, Constants, HttpMetada
 
 	@Override
 	public boolean hasToken() {
-		token(); // try to find and deserialize the token
-		return tokenStatus != TokenStatus.NONE;
+		// FIXME don't deserialize token, just check if it exists
+		return U.notEmpty(token()); // try to find and deserialize the token
 	}
 
 	@Override
@@ -707,7 +722,7 @@ public class ReqImpl extends RapidoidThing implements Req, Constants, HttpMetada
 						tokenStatus(tokenData != null ? TokenStatus.LOADED : TokenStatus.NONE);
 
 					} catch (Exception e) {
-						Log.debug("Token deserialization error!", e);
+						Log.error("Token deserialization error!", e);
 						tokenStatus(TokenStatus.INVALID);
 					}
 
@@ -800,8 +815,8 @@ public class ReqImpl extends RapidoidThing implements Req, Constants, HttpMetada
 	@Override
 	public void revert() {
 		rendering = false;
-		posConLen = 0;
-		posBefore = 0;
+		posContentLengthValue = 0;
+		posBeforeBody = 0;
 		async = false;
 		done = false;
 		completed = false;
@@ -851,15 +866,97 @@ public class ReqImpl extends RapidoidThing implements Req, Constants, HttpMetada
 		if (response != null) {
 			return response.out(); // performs extra checks
 		} else {
-			startRendering(200, true);
-			return channel().output().asOutputStream();
+			return startOutputStream(200);
 		}
+	}
+
+	public OutputStream startOutputStream(int respCode) {
+		doRendering(respCode, null);
+		BufUtil.startWriting(channel().output());
+		return channel().outputStream();
 	}
 
 	@Override
 	public MediaType contentType() {
 		MediaType contentType = response != null ? response.contentType() : null;
 		return U.or(contentType, defaultContentType);
+	}
+
+	@Override
+	public long handle() {
+		return handle;
+	}
+
+	public boolean isKeepAlive() {
+		return isKeepAlive;
+	}
+
+	public void doneProcessing() {
+		done = true;
+
+		if (willSaveToCache()) saveToCache();
+	}
+
+	private void saveToCache() {
+		U.must(posBeforeBody != UNDEFINED);
+
+		Buf out = channel.output();
+		int posAfterBody = out.size();
+		int bodyLength = (int) (posAfterBody - posBeforeBody);
+
+		// FIXME validate '\r\n\r\n' before the start position of the response body
+
+		Cache<HTTPCacheKey, CachedResp> cache = route.cache();
+		U.notNull(cache, "route.cache");
+
+		SimpleHttpResp proxyResp = new SimpleHttpResp();
+		proxyResp.cookies = U.map(U.safe(response != null ? response.cookies() : null));
+
+		Map<String, String> headers = response != null ? response.headers() : Collections.<String, String>emptyMap();
+		HttpUtils.proxyResponseHeaders(headers, proxyResp);
+
+		proxyResp.code = response != null ? response.code() : 200;
+
+		if (proxyResp.contentType == null) {
+			proxyResp.contentType = response != null ? response.contentType() : U.or(defaultContentType, MediaType.HTML_UTF_8);
+		}
+
+		// don't cache the response if it contains cookies or token data
+		if (U.notEmpty(proxyResp.cookies) || hasToken()) return;
+
+		ByteBuffer body = writeBodyToBuf(out, bodyLength);
+		CachedResp cached = new CachedResp(proxyResp.code, proxyResp.contentType, proxyResp.headers, body);
+
+		cache.set(cacheKey, cached);
+	}
+
+	private ByteBuffer writeBodyToBuf(Buf out, int bodyLength) {
+		ByteBuffer body = ByteBuffer.allocateDirect(bodyLength);
+		out.writeTo(body, (int) posBeforeBody, bodyLength);
+		body.flip();
+		return body;
+	}
+
+	@Override
+	public Req getReqOrNull() {
+		return this;
+	}
+
+	private boolean willSaveToCache() {
+		return cacheKey != null;
+	}
+
+	public HTTPCacheKey cacheKey() {
+		return cacheKey;
+	}
+
+	private boolean isCacheable() {
+		return route != null
+			&& HttpUtils.isGetReq(this)
+			&& route.cache() != null
+			&& cookies.isEmpty()
+			&& U.notEmpty(host())
+			&& !hasToken();
 	}
 
 }

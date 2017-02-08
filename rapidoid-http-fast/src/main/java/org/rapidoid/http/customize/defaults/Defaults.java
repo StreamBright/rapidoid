@@ -4,7 +4,7 @@ package org.rapidoid.http.customize.defaults;
  * #%L
  * rapidoid-http-fast
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ import org.rapidoid.render.Templates;
 @Since("5.1.7")
 public class Defaults extends RapidoidThing {
 
-	private static final String[] staticFilesPath = {"static", "public", "default/static", "default/public"};
+	private static final String[] staticFilesPath = {"static", "default/static"};
 
 	private static final HttpWrapper[] wrappers = {};
 

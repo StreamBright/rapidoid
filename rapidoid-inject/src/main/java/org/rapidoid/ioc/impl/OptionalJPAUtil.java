@@ -4,7 +4,7 @@ package org.rapidoid.ioc.impl;
  * #%L
  * rapidoid-inject
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,8 +23,8 @@ package org.rapidoid.ioc.impl;
 import org.rapidoid.RapidoidThing;
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
-import org.rapidoid.jpa.SharedContextAwareEntityManagerProxy;
-import org.rapidoid.jpa.SharedEntityManagerFactoryProxy;
+import org.rapidoid.jpa.impl.SharedContextAwareEntityManagerProxy;
+import org.rapidoid.jpa.impl.SharedEntityManagerFactoryProxy;
 
 @Authors("Nikolche Mihajlovski")
 @Since("5.1.0")

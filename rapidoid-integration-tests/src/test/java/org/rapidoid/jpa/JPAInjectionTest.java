@@ -8,6 +8,8 @@ import org.rapidoid.http.Req;
 import org.rapidoid.ioc.IoCContext;
 import org.rapidoid.ioc.impl.IoCContextWrapper;
 import org.rapidoid.ioc.Wired;
+import org.rapidoid.jpa.impl.SharedContextAwareEntityManagerProxy;
+import org.rapidoid.jpa.impl.SharedEntityManagerFactoryProxy;
 import org.rapidoid.setup.App;
 import org.rapidoid.u.U;
 
@@ -19,7 +21,7 @@ import javax.persistence.PersistenceContext;
  * #%L
  * rapidoid-integration-tests
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.

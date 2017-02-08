@@ -19,7 +19,7 @@ import java.util.Set;
  * #%L
  * rapidoid-commons
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -90,7 +90,7 @@ public class Environment extends RapidoidInitializer {
 			profilesView = Collections.unmodifiableSet(profiles);
 		}
 
-		boolean production = Env.hasInitial("mode", "production") || profiles.contains("production");
+		boolean production = Msc.isPlatform() || Env.hasInitial("mode", "production") || profiles.contains("production");
 		boolean test = Env.hasInitial("mode", "test") || profiles.contains("test");
 		boolean dev = Env.hasInitial("mode", "dev") || profiles.contains("dev");
 
@@ -120,6 +120,12 @@ public class Environment extends RapidoidInitializer {
 		Log.info("Automatically activating mode-specific profile", "!profile", modeProfile);
 		profiles.add(modeProfile);
 
+		if (Msc.isPlatform()) {
+			profiles.add("platform");
+		}
+
+		RapidoidEnv.touch();
+
 		Log.info("Initialized environment", "!mode", mode, "!profiles", profiles);
 	}
 
@@ -135,17 +141,25 @@ public class Environment extends RapidoidInitializer {
 	}
 
 	private static List<String> retrieveProfiles() {
+		List<String> profiles;
+
 		String profilesLst = Env.initial("profiles");
 
 		if (U.notEmpty(profilesLst)) {
-			List<String> profiles = U.list(profilesLst.split("\\s*\\,\\s*"));
+			profiles = U.list(profilesLst.split("\\s*\\,\\s*"));
 			Log.info("Configuring active profiles", "!profiles", profiles);
 			return profiles;
 
 		} else {
-			Log.info("No profiles were specified, activating 'default' profile");
-			return U.list("default");
+			if (!Msc.isPlatform()) {
+				Log.info("No profiles were specified, activating 'default' profile");
+				profiles = U.list("default");
+			} else {
+				profiles = U.list();
+			}
 		}
+
+		return profiles;
 	}
 
 	public void setArgs(String... args) {
@@ -190,10 +204,12 @@ public class Environment extends RapidoidInitializer {
 	}
 
 	public EnvProperties properties() {
+		RapidoidEnv.touch();
 		return properties;
 	}
 
 	public Map<String, Object> argsAsMap() {
+		RapidoidEnv.touch();
 		U.notNull(args, "environment args");
 		return Msc.parseArgs(args);
 	}

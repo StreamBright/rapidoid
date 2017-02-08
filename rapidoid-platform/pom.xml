@@ -1,4 +1,5 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
 	<parent>
@@ -41,10 +42,74 @@
 			<artifactId>postgresql</artifactId>
 			<version>${postgresql-version}</version>
 		</dependency>
+		<dependency>
+			<groupId>com.mchange</groupId>
+			<artifactId>c3p0</artifactId>
+			<version>${c3p0.version}</version>
+		</dependency>
+
+		<!-- MAVEN -->
+
+		<dependency>
+			<groupId>org.apache.maven</groupId>
+			<artifactId>maven-embedder</artifactId>
+			<version>3.2.1</version>
+		</dependency>
+		<dependency>
+			<groupId>org.eclipse.aether</groupId>
+			<artifactId>aether-connector-wagon</artifactId>
+			<version>0.9.0.M2</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.maven.wagon</groupId>
+			<artifactId>wagon-http-lightweight</artifactId>
+			<version>2.12</version>
+		</dependency>
+
+		<!--
+				TODO try to make it work with the latest Maven:
+
+				<dependency>
+					<groupId>org.apache.maven</groupId>
+					<artifactId>maven-embedder</artifactId>
+					<version>${embedded-maven.version}</version>
+				</dependency>
+				<dependency>
+					<groupId>org.eclipse.aether</groupId>
+					<artifactId>aether-connector-basic</artifactId>
+					<version>1.1.0</version>
+				</dependency>
+				<dependency>
+					<groupId>org.eclipse.aether</groupId>
+					<artifactId>aether-transport-wagon</artifactId>
+					<version>1.1.0</version>
+				</dependency>
+				<dependency>
+					<groupId>org.apache.maven.wagon</groupId>
+					<artifactId>wagon-http</artifactId>
+					<version>2.12</version>
+				</dependency>
+				<dependency>
+					<groupId>org.apache.maven.wagon</groupId>
+					<artifactId>wagon-provider-api</artifactId>
+					<version>2.12</version>
+				</dependency>
+		-->
+
+		<!-- TEST -->
+
+		<dependency>
+			<groupId>org.rapidoid</groupId>
+			<artifactId>rapidoid-test-commons</artifactId>
+			<version>${project.version}</version>
+			<scope>test</scope>
+		</dependency>
+
 	</dependencies>
 
 	<build>
 		<plugins>
+
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-assembly-plugin</artifactId>
@@ -64,13 +129,14 @@
 							</descriptorRefs>
 							<archive>
 								<manifest>
-									<mainClass>org.rapidoid.standalone.Main</mainClass>
+									<mainClass>org.rapidoid.platform.Main</mainClass>
 								</manifest>
 							</archive>
 						</configuration>
 					</execution>
 				</executions>
 			</plugin>
+
 		</plugins>
 	</build>
 

@@ -27,7 +27,7 @@ import java.util.Set;
  * #%L
  * rapidoid-gui
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -67,7 +67,7 @@ public class HtmlPage extends ScreenBean {
 
 		String html;
 		IReqInfo req = ReqInfo.get();
-		if (req.isGetReq() && req.params().get("__event__") == null) {
+		if (req.isGetReq() && !GUI.isEvent()) {
 			html = PAGE_TEMPLATE.render(model);
 		} else {
 			html = PAGE_AJAX_TEMPLATE.render(model);

@@ -3,7 +3,9 @@ package org.rapidoid.collection;
 import org.rapidoid.RapidoidThing;
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
+import org.rapidoid.cls.Cls;
 import org.rapidoid.commons.Err;
+import org.rapidoid.data.JSON;
 import org.rapidoid.datamodel.DataItems;
 import org.rapidoid.lambda.Mapper;
 import org.rapidoid.u.U;
@@ -16,7 +18,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * #%L
  * rapidoid-commons
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -354,6 +356,33 @@ public class Coll extends RapidoidThing {
 
 	public static <K, V> ChangeTrackingMap<K, V> trackChanges(Map<K, V> map, AtomicBoolean dirtyFlag) {
 		return new ChangeTrackingMap<K, V>(map, dirtyFlag);
+	}
+
+	public static <T> Map<String, T> toBeanMap(Map<String, Object> data, Class<T> type) {
+		Map<String, T> map = U.map();
+
+		for (Map.Entry<String, Object> e : data.entrySet()) {
+			T bean;
+			Object value = e.getValue();
+
+			if (value instanceof Map) {
+				bean = JSON.MAPPER.convertValue(value, type);
+
+			} else if (value instanceof String) {
+				bean = Cls.newInstance(type, value);
+
+			} else {
+				throw U.rte("Unsupported configuration type: %s", Cls.of(value));
+			}
+
+			map.put(e.getKey(), bean);
+		}
+
+		return Collections.unmodifiableMap(map);
+	}
+
+	public static Map<String, Object> deepCopyOf(Map<String, Object> map) {
+		return JSON.parseMap(JSON.stringify(map)); // FIXME proper implementation
 	}
 
 }

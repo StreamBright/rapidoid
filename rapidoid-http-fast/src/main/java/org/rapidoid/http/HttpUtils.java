@@ -3,29 +3,32 @@ package org.rapidoid.http;
 import org.rapidoid.RapidoidThing;
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
+import org.rapidoid.bytes.Bytes;
+import org.rapidoid.bytes.BytesUtil;
 import org.rapidoid.commons.Str;
 import org.rapidoid.config.BasicConfig;
 import org.rapidoid.config.Conf;
 import org.rapidoid.config.Config;
 import org.rapidoid.ctx.Ctxs;
 import org.rapidoid.ctx.UserInfo;
+import org.rapidoid.data.BufRanges;
 import org.rapidoid.gui.reqinfo.ReqInfo;
 import org.rapidoid.http.customize.Customization;
 import org.rapidoid.http.customize.JsonResponseRenderer;
+import org.rapidoid.http.impl.MaybeReq;
 import org.rapidoid.http.impl.PathPattern;
 import org.rapidoid.io.Res;
 import org.rapidoid.lambda.Mapper;
 import org.rapidoid.u.U;
-import org.rapidoid.util.*;
+import org.rapidoid.util.ErrCodeAndMsg;
+import org.rapidoid.util.Msc;
+import org.rapidoid.util.TokenAuthData;
+import org.rapidoid.util.Tokens;
 
-import javax.validation.ConstraintViolation;
-import javax.validation.ConstraintViolationException;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.Serializable;
-import java.util.Iterator;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.regex.Pattern;
 
@@ -33,7 +36,7 @@ import java.util.regex.Pattern;
  * #%L
  * rapidoid-http-fast
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -56,6 +59,13 @@ public class HttpUtils extends RapidoidThing implements HttpMetadata {
 	private static final String PAGE_RELOAD = "<h2>&nbsp;Reloading...</h2><script>location.reload();</script>";
 
 	private static final byte[] EMPTY_RESPONSE = {};
+
+	private static final MaybeReq NO_REQ = new MaybeReq() {
+		@Override
+		public Req getReqOrNull() {
+			return null;
+		}
+	};
 
 	public static volatile Pattern REGEX_VALID_HTTP_RESOURCE = Pattern.compile("(?:/[A-Za-z0-9_\\-\\.]+)*/?");
 
@@ -82,11 +92,11 @@ public class HttpUtils extends RapidoidThing implements HttpMetadata {
 	}
 
 	public static boolean isGetReq(Req req) {
-		return req.verb().equalsIgnoreCase(GET);
+		return req.verb().equals(GET);
 	}
 
 	public static boolean isPostReq(Req req) {
-		return req.verb().equalsIgnoreCase(POST);
+		return req.verb().equals(POST);
 	}
 
 	public static String resName(Req req) {
@@ -146,60 +156,8 @@ public class HttpUtils extends RapidoidThing implements HttpMetadata {
 		}
 	}
 
-	public static ErrCodeAndMsg getErrorCodeAndMsg(Throwable err) {
-		Throwable cause = Msc.rootCause(err);
-
-		int code;
-		String defaultMsg;
-		String msg = cause.getMessage();
-
-		if (cause instanceof SecurityException) {
-			code = 403;
-			defaultMsg = "Access Denied!";
-
-		} else if (cause instanceof NotFound) {
-			code = 404;
-			defaultMsg = "The requested resource could not be found!";
-
-		} else if (Msc.isValidationError(cause)) {
-			code = 422;
-			defaultMsg = "Validation Error!";
-
-			if (cause.getClass().getName().equals("javax.validation.ConstraintViolationException")) {
-				Set<ConstraintViolation<?>> violations = ((ConstraintViolationException) cause).getConstraintViolations();
-
-				StringBuilder sb = new StringBuilder();
-				sb.append("Validation failed: ");
-
-				for (Iterator<ConstraintViolation<?>> it = U.safe(violations).iterator(); it.hasNext(); ) {
-					ConstraintViolation<?> v = it.next();
-
-					sb.append(v.getRootBeanClass().getSimpleName());
-					sb.append(".");
-					sb.append(v.getPropertyPath());
-					sb.append(" (");
-					sb.append(v.getMessage());
-					sb.append(")");
-
-					if (it.hasNext()) {
-						sb.append(", ");
-					}
-				}
-
-				msg = sb.toString();
-			}
-
-		} else {
-			code = 500;
-			defaultMsg = "Internal Server Error!";
-		}
-
-		msg = U.or(msg, defaultMsg);
-		return new ErrCodeAndMsg(code, msg);
-	}
-
 	public static String getErrorMessageAndSetCode(Resp resp, Throwable err) {
-		ErrCodeAndMsg codeAndMsg = getErrorCodeAndMsg(err);
+		ErrCodeAndMsg codeAndMsg = Msc.getErrorCodeAndMsg(err);
 		resp.code(codeAndMsg.code());
 		return codeAndMsg.msg();
 	}
@@ -362,4 +320,69 @@ public class HttpUtils extends RapidoidThing implements HttpMetadata {
 
 		return auth;
 	}
+
+	public static String inferRealIpAddress(Req req) {
+		// // FIXME if CloudFlare is detected, use req.header("cf-connecting-ip")
+		return req.clientIpAddress();
+	}
+
+	public static MaybeReq noReq() {
+		return NO_REQ;
+	}
+
+	public static MaybeReq maybe(Req req) {
+		return req != null ? (MaybeReq) req : noReq();
+	}
+
+	public static MaybeReq req(Req req) {
+		U.notNull(req, "HTTP request");
+		return (MaybeReq) req;
+	}
+
+	public static int findBodyStart(byte[] response) {
+		Bytes bytes = BytesUtil.from(response);
+		BufRanges lines = new BufRanges(100);
+
+		int pos = BytesUtil.parseLines(bytes, lines, 0, bytes.limit());
+		U.must(pos > 0, "Invalid HTTP response!");
+
+		return pos;
+	}
+
+	private static boolean ignoreResponseHeaderInProxy(String name) {
+		return name.equalsIgnoreCase("Transfer-encoding")
+			|| name.equalsIgnoreCase("Content-length")
+			|| name.equalsIgnoreCase("Connection")
+			|| name.equalsIgnoreCase("Date")
+			|| name.equalsIgnoreCase("Server");
+	}
+
+	public static void proxyResponseHeaders(Map<String, String> respHeaders, SimpleHttpResp resp) {
+		for (Map.Entry<String, String> hdr : respHeaders.entrySet()) {
+
+			String name = hdr.getKey();
+			String value = hdr.getValue();
+
+			if (name.equalsIgnoreCase("Content-type")) {
+				resp.contentType = MediaType.of(value);
+
+			} else if (name.equalsIgnoreCase("Set-Cookie")) {
+
+				String[] parts = value.split("=", 2);
+				U.must(parts.length == 2, "Invalid value of the Set-Cookie header!");
+
+				if (resp.cookies == null) {
+					resp.cookies = U.map();
+				}
+				resp.cookies.put(parts[0], parts[1]);
+
+			} else if (!ignoreResponseHeaderInProxy(name)) {
+				if (resp.headers == null) {
+					resp.headers = U.map();
+				}
+				resp.headers.put(name, value);
+			}
+		}
+	}
+
 }

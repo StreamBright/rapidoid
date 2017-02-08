@@ -4,7 +4,7 @@ package org.rapidoid.http;
  * #%L
  * rapidoid-integration-tests
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,8 +38,8 @@ public class ReverseProxyTest extends IsolatedIntegrationTest {
 
 		On.get("/bar/hi").json("BAR HI");
 
-		proxy("/bar", "http://localhost:8888/foo");
-		proxy("/", "http://localhost:8888/foo");
+		proxy("/bar", "http://localhost:8080/foo");
+		proxy("/", "http://localhost:8080/foo");
 
 		getReq("/bar");
 		getReq("/bar/hello/");

@@ -4,7 +4,7 @@ package org.rapidoid.config;
  * #%L
  * rapidoid-commons
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ import java.util.List;
 @Since("5.2.0")
 public class ConfigLoaderUtil extends RapidoidThing {
 
-	public static void loadConfig(Config config, List<List<String>> detached, List<String> loaded) {
+	public static void loadConfig(Config config, List<String> loaded) {
 		String nameBase = config.getFilenameBase();
 
 		if (U.notEmpty(nameBase)) {
@@ -45,10 +45,6 @@ public class ConfigLoaderUtil extends RapidoidThing {
 			for (String profile : Env.profiles()) {
 				ConfigUtil.load(Msc.path(config.getPath(), U.frmt(configProfilePattern, profile)), config, loaded);
 			}
-
-			for (List<String> keys : detached) {
-				autoRefresh(keys.isEmpty() ? config : config.sub(keys));
-			}
 		}
 	}
 
@@ -57,47 +53,13 @@ public class ConfigLoaderUtil extends RapidoidThing {
 
 		if (U.notEmpty(nameBase)) {
 
-			ConfigUtil.load("default-config.yml", config, loaded);
+			ConfigUtil.load("built-in-config.yml", config, loaded);
 
 			for (String profile : Env.profiles()) {
-				String filename = U.frmt("default-config-%s.yml", profile);
+				String filename = U.frmt("built-in-config-%s.yml", profile);
 				ConfigUtil.load(filename, config, loaded);
 			}
 		}
-	}
-
-	static void loadDefaultConfig(Config config, List<String> loaded) {
-		String nameBase = config.getFilenameBase();
-
-		if (U.notEmpty(nameBase)) {
-			String name = "default-" + nameBase;
-
-			String filename = name + ".yml";
-			filename = Msc.path(config.getPath(), filename);
-
-			ConfigUtil.load(filename, config, loaded);
-
-			for (String profile : Env.profiles()) {
-
-				filename = U.frmt(name + "-%s.yml", profile);
-				filename = Msc.path(config.getPath(), filename);
-
-				ConfigUtil.load(filename, config, loaded);
-			}
-		}
-	}
-
-	private static void autoRefresh(Config... configs) {
-		for (Config config : configs) {
-			List<String> keys = config.keys();
-			ConfigUtil.autoRefresh(config, filename(config, keys));
-		}
-	}
-
-	private static String filename(Config config, List<String> keys) {
-		U.must(keys.size() < 2);
-		String configName = keys.isEmpty() ? config.getFilenameBase() : keys.get(0);
-		return Msc.path(config.getPath(), configName + ConfigUtil.YML_OR_YAML_OR_JSON);
 	}
 
 }

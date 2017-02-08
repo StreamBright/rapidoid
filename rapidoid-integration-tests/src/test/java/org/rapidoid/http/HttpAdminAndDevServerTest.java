@@ -4,7 +4,7 @@ package org.rapidoid.http;
  * #%L
  * rapidoid-integration-tests
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,12 +35,12 @@ public class HttpAdminAndDevServerTest extends IsolatedIntegrationTest {
 	@Test
 	public void testAdminOnAppServer() {
 		sameSetup();
-		sameRequests(8888);
+		sameRequests(8080);
 	}
 
 	@Test
 	public void testAdminServerConfig() {
-		int port = 20000;
+		int port = 8881;
 		Conf.section("admin").set("port", port);
 
 		sameSetup();

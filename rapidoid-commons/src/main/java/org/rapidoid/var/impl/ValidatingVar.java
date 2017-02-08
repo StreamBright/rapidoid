@@ -12,7 +12,7 @@ import org.rapidoid.var.Var;
  * #%L
  * rapidoid-commons
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,6 +43,8 @@ public class ValidatingVar<T> extends DecoratorVar<T> {
 
 	@Override
 	protected void doSet(T value) {
+		var.set(value);
+
 		boolean valid;
 		try {
 			valid = Lmbd.eval(isValid, value);
@@ -53,8 +55,6 @@ public class ValidatingVar<T> extends DecoratorVar<T> {
 		}
 
 		U.must(valid, message);
-
-		var.set(value);
 	}
 
 }

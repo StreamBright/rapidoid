@@ -4,7 +4,7 @@ package org.rapidoid.http;
  * #%L
  * rapidoid-integration-tests
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,39 +44,38 @@ public class AsyncHttpServerTest extends IsolatedIntegrationTest {
 			req.async();
 			U.must(req.isAsync());
 
-			Jobs.schedule(() -> {
-				IO.write(req.response().out(), "O");
+			Jobs.after(10, TimeUnit.MILLISECONDS).run(() -> {
 
-				Jobs.schedule(() -> {
-					IO.write(req.response().out(), "K");
-					req.done();
-				}, 1, TimeUnit.SECONDS);
+				IO.write(req.out(), "O");
 
-			}, 1, TimeUnit.SECONDS);
-
-			return req;
-		});
-
-		eq(HTTP.get("http://localhost:8888/").fetch(), "OK");
-		eq(HTTP.post("http://localhost:8888/").fetch(), "OK");
-	}
-
-	@Test
-	public void testAsyncHttpServer2() {
-		On.req(req -> {
-			return Jobs.after(1, TimeUnit.SECONDS).run(() -> {
-				IO.write(req.response().out(), "A");
-
-				Jobs.after(1, TimeUnit.SECONDS).run(() -> {
-					IO.write(req.response().out(), "SYNC");
+				Jobs.after(10, TimeUnit.MILLISECONDS).run(() -> {
+					IO.write(req.out(), "K");
 					req.done();
 				});
 
 			});
+
+			return req;
 		});
 
-		eq(HTTP.get("http://localhost:8888/").fetch(), "ASYNC");
-		eq(HTTP.post("http://localhost:8888/").fetch(), "ASYNC");
+		Self.get("/").expect("OK").benchmark(1, 100, 10000);
+		Self.post("/").expect("OK").benchmark(1, 100, 10000);
+	}
+
+	@Test
+	public void testAsyncHttpServer2() {
+		On.req(req -> Jobs.after(10, TimeUnit.MILLISECONDS).run(() -> {
+
+			IO.write(req.out(), "A");
+
+			Jobs.after(10, TimeUnit.MILLISECONDS).run(() -> {
+				IO.write(req.out(), "SYNC");
+				req.done();
+			});
+		}));
+
+		Self.get("/").expect("ASYNC").benchmark(1, 100, 10000);
+		Self.post("/").expect("ASYNC").benchmark(1, 100, 10000);
 	}
 
 }

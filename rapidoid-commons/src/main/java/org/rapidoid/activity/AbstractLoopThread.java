@@ -11,7 +11,7 @@ import java.util.concurrent.CancellationException;
  * #%L
  * rapidoid-commons
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,6 +36,10 @@ public abstract class AbstractLoopThread extends RapidoidThread {
 	public AbstractLoopThread() {
 	}
 
+	public AbstractLoopThread(String name) {
+		super(name);
+	}
+
 	public AbstractLoopThread(long sleepMs) {
 		this.sleepMs = sleepMs;
 	}
@@ -45,16 +49,19 @@ public abstract class AbstractLoopThread extends RapidoidThread {
 		while (!Thread.interrupted()) {
 			try {
 				loop();
+				U.sleep(sleepMs);
+
 			} catch (ThreadDeath e) {
-				throw e;
-			} catch (CancellationException e) {
-				Log.error("The thread was interrupted!");
+				Log.error("Received ThreadDeath error, terminating!", e);
 				return;
+
+			} catch (CancellationException e) {
+				Log.info("The thread was interrupted.");
+				return;
+
 			} catch (Throwable e) {
 				Log.error("Exception occured inside the thread loop!", e);
 			}
-
-			U.sleep(sleepMs);
 		}
 	}
 

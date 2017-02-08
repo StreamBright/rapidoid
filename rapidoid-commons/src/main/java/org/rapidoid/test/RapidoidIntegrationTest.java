@@ -4,7 +4,7 @@ package org.rapidoid.test;
  * #%L
  * rapidoid-commons
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,27 +20,62 @@ package org.rapidoid.test;
  * #L%
  */
 
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.rapidoid.RapidoidModule;
+import org.rapidoid.RapidoidModules;
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.IntegrationTest;
+import org.rapidoid.annotation.RapidoidModuleDesc;
 import org.rapidoid.annotation.Since;
+import org.rapidoid.env.Env;
+import org.rapidoid.log.Log;
+import org.rapidoid.util.Msc;
 
 @Authors("Nikolche Mihajlovski")
 @Since("5.1.6")
 @IntegrationTest
 public abstract class RapidoidIntegrationTest extends RapidoidTest {
 
-	//		isTrue(Env.test());
-//		isTrue(Env.profiles().contains("test"));
-//		Log.setLogLevel(LogLevel.DEBUG);
-//
-//		IoC.autowire(this);
-//
-//		ScanPackages scan = Metadata.getAnnotationRecursive(getClass(), ScanPackages.class);
-//
-//		if (scan != null) {
-//			String[] pkgs = scan.value();
-//			U.must(U.notEmpty(pkgs), "@ScanPackages requires a list of packages to scan!");
-//			App.scan(pkgs);
-//		}
+	@Before
+	public final void beforeRapidoidTest() {
+
+		Log.info("--------------------------------------------------------------------------------");
+		Log.info("@" + Msc.processId() + " TEST " + getClass().getCanonicalName());
+		Log.info("--------------------------------------------------------------------------------");
+
+		clearErrors();
+
+		isTrue(Msc.isInsideTest());
+		isTrue(Env.test());
+
+		before(this);
+	}
+
+	@After
+	public final void afterRapidoidTest() {
+		after(this);
+
+		if (hasError()) {
+			Assert.fail("Assertion error(s) occured, probably were caught or were thrown on non-main thread!");
+		}
+	}
+
+	public static void before(Object test) {
+		for (RapidoidModule mod : RapidoidModules.getAllAvailable()) {
+			RapidoidModuleDesc ann = mod.getClass().getAnnotation(RapidoidModuleDesc.class);
+			Log.debug("Initializing module before the test", "module", ann.name(), "order", ann.order());
+			mod.beforeTest(test);
+		}
+
+		Log.debug("All modules are initialized");
+	}
+
+	public static void after(Object test) {
+		for (RapidoidModule mod : RapidoidModules.getAllAvailable()) {
+			mod.afterTest(test);
+		}
+	}
 
 }

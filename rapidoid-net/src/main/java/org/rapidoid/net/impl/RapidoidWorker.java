@@ -3,6 +3,7 @@ package org.rapidoid.net.impl;
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
 import org.rapidoid.buffer.BufGroup;
+import org.rapidoid.buffer.BufUtil;
 import org.rapidoid.buffer.IncompleteReadException;
 import org.rapidoid.collection.Coll;
 import org.rapidoid.config.Conf;
@@ -32,7 +33,7 @@ import java.util.concurrent.Callable;
  * #%L
  * rapidoid-net
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -96,11 +97,13 @@ public class RapidoidWorker extends AbstractEventLoop<RapidoidWorker> {
 	}
 
 	public RapidoidWorker(String name, final Protocol protocol, final RapidoidHelper helper,
-	                      int bufSizeKB, boolean noNelay, boolean syncBufs) {
+	                      int bufSizeKB, boolean noDelay, boolean syncBufs) {
 
 		super(name);
 
-		this.bufs = new BufGroup(14, syncBufs); // 2^14B (16 KB per buffer segment)
+		this.bufSize = bufSizeKB * 1024;
+		this.noDelay = noDelay;
+		this.bufs = new BufGroup(bufSize, syncBufs);
 
 		this.serverProtocol = protocol;
 		this.helper = helper;
@@ -119,9 +122,6 @@ public class RapidoidWorker extends AbstractEventLoop<RapidoidWorker> {
 				return newConnection();
 			}
 		}, 100000);
-
-		this.bufSize = bufSizeKB * 1024;
-		this.noDelay = noNelay;
 
 		if (idleConnectionsCrawler != null) {
 			idleConnectionsCrawler.register(allConnections);
@@ -188,11 +188,17 @@ public class RapidoidWorker extends AbstractEventLoop<RapidoidWorker> {
 
 	private boolean processNext(RapidoidConnection conn, boolean initial) {
 
+		long seq;
+
 		if (initial) {
 			// conn.log("<< INIT >>");
 
+			seq = 0;
 			conn.requestId = -1;
 		} else {
+
+			seq = conn.readSeq.incrementAndGet();
+
 			// conn.log("<< PROCESS >>");
 			U.must(conn.input().hasRemaining());
 
@@ -207,7 +213,7 @@ public class RapidoidWorker extends AbstractEventLoop<RapidoidWorker> {
 		int limit = conn.input().limit();
 		int osize = conn.output().size();
 
-		conn.input().setReadOnly(true);
+		BufUtil.doneWriting(conn.input());
 
 		ConnState state = conn.state();
 		long stateN = state.n;
@@ -215,6 +221,7 @@ public class RapidoidWorker extends AbstractEventLoop<RapidoidWorker> {
 
 		try {
 			conn.done = false;
+			conn.async = false;
 
 			if (EXTRA_SAFE) {
 				processNextExtraSafe(conn);
@@ -228,10 +235,13 @@ public class RapidoidWorker extends AbstractEventLoop<RapidoidWorker> {
 				protocol.process(conn);
 			}
 
-			conn.input().setReadOnly(false);
+			BufUtil.startWriting(conn.input());
 
-			if (!conn.closed && !conn.isAsync()) {
-				conn.done();
+			if (!conn.isAsync()) {
+				if (!conn.closed) {
+					conn.done();
+				}
+				conn.processedSeq(seq);
 			}
 
 			conn.input().deleteBefore(conn.input().checkpoint());
@@ -247,26 +257,32 @@ public class RapidoidWorker extends AbstractEventLoop<RapidoidWorker> {
 			// input not complete, so rollback
 			conn.input().position(conn.input().checkpoint());
 			conn.input().limit(limit);
-			conn.input().setReadOnly(false);
-
-			conn.output().deleteAfter(osize);
+			BufUtil.startWriting(conn.input());
 
 			state.n = stateN;
 			state.obj = stateObj;
+
+			boolean decreased = conn.readSeq.compareAndSet(seq, seq - 1);
+			U.must(decreased, "Error in the request order control! Handle: %s", seq);
 
 		} catch (ProtocolException e) {
 
 			conn.log("<< PROTOCOL ERROR >>");
 			Log.warn("Protocol error", "error", e);
+
 			conn.output().deleteAfter(osize);
 			conn.write(U.or(e.getMessage(), "Protocol error!"));
 			conn.error();
+
+			conn.processedSeq(seq);
 			conn.close(true);
 
 		} catch (Throwable e) {
 
 			conn.log("<< ERROR >>");
 			Log.error("Failed to process message!", e);
+
+			conn.processedSeq(seq);
 			conn.close(true);
 		}
 
@@ -296,6 +312,7 @@ public class RapidoidWorker extends AbstractEventLoop<RapidoidWorker> {
 	private void close(SelectionKey key) {
 		try {
 			if (key != null) {
+
 				Object attachment = key.attachment();
 
 				clearKey(key);
@@ -335,25 +352,45 @@ public class RapidoidWorker extends AbstractEventLoop<RapidoidWorker> {
 		touch(conn);
 
 		try {
-			int wrote = conn.output.writeTo(socketChannel);
-			conn.output.deleteBefore(wrote);
-
-			boolean complete = conn.output.size() == 0;
-
-			if (conn.closeAfterWrite() && complete) {
-				close(conn);
-			} else {
-				if (complete) {
-					key.interestOps(SelectionKey.OP_READ);
-				} else {
-					key.interestOps(SelectionKey.OP_READ + SelectionKey.OP_WRITE);
+			synchronized (conn) {
+				synchronized (conn.output) {
+					writeOp(key, conn, socketChannel);
 				}
-				conn.wrote(complete);
 			}
+
 		} catch (IOException e) {
 			close(conn);
+
 		} catch (CancelledKeyException cke) {
 			Log.debug("Tried to write on canceled selector key!");
+		}
+	}
+
+	private void writeOp(SelectionKey key, RapidoidConnection conn, SocketChannel socketChannel) throws IOException {
+
+		synchronized (conn.output) {
+			BufUtil.startWriting(conn.output);
+			int wrote = conn.output.writeTo(socketChannel);
+			conn.output.deleteBefore(wrote);
+			BufUtil.doneWriting(conn.output);
+		}
+
+		boolean finishedWriting, closeAfterWrite;
+		synchronized (conn) {
+			finishedWriting = conn.finishedWriting();
+			closeAfterWrite = conn.closeAfterWrite();
+		}
+
+		if (finishedWriting && closeAfterWrite) {
+			close(conn);
+
+		} else {
+			if (finishedWriting) {
+				key.interestOps(SelectionKey.OP_READ);
+			} else {
+				key.interestOps(SelectionKey.OP_READ + SelectionKey.OP_WRITE);
+			}
+			conn.wrote(finishedWriting);
 		}
 	}
 

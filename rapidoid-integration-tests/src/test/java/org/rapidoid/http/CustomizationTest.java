@@ -4,7 +4,7 @@ package org.rapidoid.http;
  * #%L
  * rapidoid-integration-tests
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -123,11 +123,11 @@ public class CustomizationTest extends IsolatedIntegrationTest {
 		});
 
 		On.get("/err3").json(req -> {
-			throw new SecurityException("denied!");
+			throw new SecurityException("INTENTIONAL - Access denied!");
 		});
 
 		On.get("/err4").json(req -> {
-			throw new OutOfMemoryError("out of memory!");
+			throw new OutOfMemoryError("INTENTIONAL - Out of memory!");
 		});
 
 		onlyGet("/err1");

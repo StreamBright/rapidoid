@@ -4,7 +4,7 @@ package org.rapidoid.commons;
  * #%L
  * rapidoid-commons
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,25 +23,22 @@ package org.rapidoid.commons;
 import org.rapidoid.RapidoidModule;
 import org.rapidoid.RapidoidThing;
 import org.rapidoid.annotation.Authors;
+import org.rapidoid.annotation.RapidoidModuleDesc;
 import org.rapidoid.annotation.Since;
 import org.rapidoid.util.Msc;
 
 @Authors("Nikolche Mihajlovski")
 @Since("5.3.0")
+@RapidoidModuleDesc(name = "Commons", order = 100)
 public class CommonsModule extends RapidoidThing implements RapidoidModule {
 
 	@Override
-	public String name() {
-		return "Commons";
-	}
-
-	@Override
-	public void beforeTest(Object test, boolean isIntegrationTest) {
+	public void beforeTest(Object test) {
 		cleanUp();
 	}
 
 	@Override
-	public void afterTest(Object test, boolean isIntegrationTest) {
+	public void afterTest(Object test) {
 		cleanUp();
 	}
 

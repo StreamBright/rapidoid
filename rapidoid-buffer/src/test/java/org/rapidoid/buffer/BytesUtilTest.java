@@ -4,7 +4,7 @@ package org.rapidoid.buffer;
  * #%L
  * rapidoid-buffer
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -85,6 +85,38 @@ public class BytesUtilTest extends BufferTestCommons {
 		Buf buf = buf(uri);
 		BufRange uriRange = BufRange.fromTo(0, buf.size());
 		return BytesUtil.isValidURI(buf.bytes(), uriRange);
+	}
+
+	@Test
+	public void testBufferBytes() {
+		Buf buf = buf("abc");
+
+		eq(buf.get(0), 'a');
+		eq(buf.bytes().get(0), 'a');
+
+		eq(buf.limit(), 3);
+		eq(buf.bytes().limit(), 3);
+
+		buf.deleteBefore(1);
+
+		eq(buf.get(0), 'b');
+		eq(buf.bytes().get(0), 'b');
+
+		eq(buf.limit(), 2);
+		eq(buf.bytes().limit(), 2);
+
+		buf.deleteBefore(1);
+
+		eq(buf.get(0), 'c');
+		eq(buf.bytes().get(0), 'c');
+
+		eq(buf.limit(), 1);
+		eq(buf.bytes().limit(), 1);
+
+		buf.deleteBefore(1);
+
+		eq(buf.limit(), 0);
+		eq(buf.bytes().limit(), 0);
 	}
 
 }

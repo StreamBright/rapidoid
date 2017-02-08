@@ -4,7 +4,7 @@ package org.rapidoid.config;
  * #%L
  * rapidoid-commons
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ package org.rapidoid.config;
 
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
+import org.rapidoid.lambda.Operation;
 
 import java.util.List;
 import java.util.Map;
@@ -43,6 +44,8 @@ public interface Config extends BasicConfig {
 
 	@Override
 	Map<String, Object> toMap();
+
+	<T> Map<String, T> toMap(Class<T> type);
 
 	void clear();
 
@@ -92,5 +95,11 @@ public interface Config extends BasicConfig {
 	boolean useBuiltInDefaults();
 
 	boolean isInitialized();
+
+	ConfigChanges getChangesSince(Config previousConfig);
+
+	void addChangeListener(Operation<ConfigChanges> configChangeListener);
+
+	void removeChangeListener(Operation<ConfigChanges> configChangeListener);
 
 }

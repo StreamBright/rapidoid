@@ -4,7 +4,7 @@ package org.rapidoid.gui;
  * #%L
  * rapidoid-gui
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,22 +24,29 @@ import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
 import org.rapidoid.gui.base.AbstractWidget;
 import org.rapidoid.gui.reqinfo.ReqInfo;
+import org.rapidoid.u.U;
 
 @Authors("Nikolche Mihajlovski")
 @Since("2.3.1")
 public class Debug extends AbstractWidget<Debug> {
 
+	public static final Debug INSTANCE = new Debug();
+
 	@Override
 	protected Object render() {
-		return GUI.multi(sessionPanel(), localPanel());
+		return GUI.row(GUI.col4(params()), GUI.col4(posted()), GUI.col4(data()));
 	}
 
-	protected Panel sessionPanel() {
-		return GUI.panel(GUI.grid(ReqInfo.get().params())).header("URL parameters");
+	protected Panel params() {
+		return GUI.panel(GUI.grid(ReqInfo.get().params())).header(U.list("URL parameters ", GUI.code("(Req#params)")));
 	}
 
-	protected Panel localPanel() {
-		return GUI.panel(GUI.grid(ReqInfo.get().posted())).header("Posted data");
+	protected Panel posted() {
+		return GUI.panel(GUI.grid(ReqInfo.get().posted())).header(U.list("Posted data ", GUI.code("(Req#posted)")));
+	}
+
+	protected Panel data() {
+		return GUI.panel(GUI.grid(ReqInfo.get().data())).header(U.list("All data ", GUI.code("(Req#data)")));
 	}
 
 }

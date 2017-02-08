@@ -1,6 +1,7 @@
 package org.rapidoid.http;
 
 import org.rapidoid.annotation.Since;
+import org.rapidoid.net.AsyncLogic;
 import org.rapidoid.web.Screen;
 
 import java.io.File;
@@ -13,7 +14,7 @@ import java.util.Map;
  * #%L
  * rapidoid-http-fast
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -267,5 +268,10 @@ public interface Resp {
 	 * Provides access to the screen model for custom (MVC) page rendering.
 	 */
 	Screen screen();
+
+	/**
+	 * Resumes the asynchronous request handling.
+	 */
+	void resume(AsyncLogic asyncLogic);
 
 }

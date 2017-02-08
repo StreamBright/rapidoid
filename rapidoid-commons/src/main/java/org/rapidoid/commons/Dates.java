@@ -15,7 +15,7 @@ import java.util.TimeZone;
  * #%L
  * rapidoid-commons
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -52,7 +52,7 @@ public class Dates extends RapidoidThing {
 		if (time > updateCurrDateAfter) {
 
 			// RFC 1123 date-time format, e.g. Sun, 07 Sep 2014 00:17:29 GMT
-			DateFormat dateFormat = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z");
+			DateFormat dateFormat = frmt("EEE, dd MMM yyyy HH:mm:ss z");
 			dateFormat.setTimeZone(GMT);
 
 			Date date = new Date();
@@ -129,10 +129,6 @@ public class Dates extends RapidoidThing {
 		return df.format(date);
 	}
 
-	private static SimpleDateFormat frmt(String frmt) {
-		return new SimpleDateFormat(frmt);
-	}
-
 	public static String day() {
 		return frmt("yyyy-MM-dd").format(U.time());
 	}
@@ -147,6 +143,34 @@ public class Dates extends RapidoidThing {
 
 	public static String second() {
 		return frmt("yyyy-MM-dd-HH-mm-ss").format(U.time());
+	}
+
+	public static SimpleDateFormat frmt(String frmt) {
+		return new SimpleDateFormat(frmt);
+	}
+
+	public static String frmt(String frmt, Date date) {
+		return frmt(frmt).format(date);
+	}
+
+	public static Calendar calendar(Date date) {
+		Calendar cal = Calendar.getInstance();
+		cal.setTime(date);
+		return cal;
+	}
+
+	public static String readable(Date date) {
+		Calendar cal = Dates.calendar(date);
+
+		if (cal.get(Calendar.YEAR) == Dates.thisYear()) {
+			return frmt("dd MMM, HH:mm", date);
+		} else {
+			return frmt("dd MMM yyyy, HH:mm", date);
+		}
+	}
+
+	public static String details(Date date) {
+		return frmt("EEE, dd MMM yyyy HH:mm:ss z", date);
 	}
 
 }

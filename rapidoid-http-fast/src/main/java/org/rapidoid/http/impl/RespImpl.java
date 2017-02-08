@@ -16,6 +16,7 @@ import org.rapidoid.http.Resp;
 import org.rapidoid.http.customize.Customization;
 import org.rapidoid.http.customize.LoginProvider;
 import org.rapidoid.http.customize.RolesProvider;
+import org.rapidoid.net.AsyncLogic;
 import org.rapidoid.u.U;
 import org.rapidoid.util.Msc;
 import org.rapidoid.util.Tokens;
@@ -34,7 +35,7 @@ import java.util.Set;
  * #%L
  * rapidoid-http-fast
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -401,6 +402,11 @@ public class RespImpl extends RapidoidThing implements Resp {
 		return screen;
 	}
 
+	@Override
+	public void resume(AsyncLogic asyncLogic) {
+		req.channel().resume(req.handle(), asyncLogic);
+	}
+
 	private Screen createScreen() {
 		Screen screen = Msc.hasRapidoidGUI() ? GUIUtil.newPage() : new ScreenBean();
 		initScreen(screen);
@@ -445,9 +451,7 @@ public class RespImpl extends RapidoidThing implements Resp {
 		U.must(body() == null, "The response body has already been set, so cannot write the response through OutputStream, too!");
 		U.must(raw() == null, "The raw response has already been set, so cannot write the response through OutputStream, too!");
 
-		req.startRendering(code(), true);
-
-		return req.channel().output().asOutputStream();
+		return req.startOutputStream(code());
 	}
 
 	@Override
@@ -471,7 +475,9 @@ public class RespImpl extends RapidoidThing implements Resp {
 
 	public byte[] renderToBytes() {
 		if (mvc()) {
-			return ResponseRenderer.render(req, this);
+			byte[] bytes = ResponseRenderer.render(req, this);
+			HttpUtils.postProcessResponse(this); // the response might have been changed, so post-process again
+			return bytes;
 
 		} else if (result() != null) {
 			return serializeResponseContent();

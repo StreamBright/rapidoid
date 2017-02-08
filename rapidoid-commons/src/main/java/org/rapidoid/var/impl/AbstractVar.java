@@ -13,7 +13,7 @@ import java.util.Set;
  * #%L
  * rapidoid-commons
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,6 +36,8 @@ public abstract class AbstractVar<T> extends RapidoidThing implements Var<T> {
 	private static final long serialVersionUID = 6006051524799076017L;
 
 	private final String name;
+
+	private volatile Object rawValue;
 
 	private final Set<String> errors = Coll.synchronizedSet();
 
@@ -60,6 +62,8 @@ public abstract class AbstractVar<T> extends RapidoidThing implements Var<T> {
 
 	@Override
 	public void set(T value) {
+		this.rawValue = value;
+
 		try {
 			doSet(value);
 			errors().clear();
@@ -77,6 +81,11 @@ public abstract class AbstractVar<T> extends RapidoidThing implements Var<T> {
 		} else {
 			errors().add(U.or(e.getMessage(), "Invalid value!"));
 		}
+	}
+
+	@Override
+	public Object getRawValue() {
+		return rawValue;
 	}
 
 }

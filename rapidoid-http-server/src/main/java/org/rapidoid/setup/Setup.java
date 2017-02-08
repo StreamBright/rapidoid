@@ -1,23 +1,27 @@
 package org.rapidoid.setup;
 
 import org.rapidoid.AuthBootstrap;
-import org.rapidoid.annotation.*;
+import org.rapidoid.annotation.Authors;
+import org.rapidoid.annotation.Since;
 import org.rapidoid.collection.Coll;
 import org.rapidoid.commons.AnyObj;
-import org.rapidoid.env.Env;
 import org.rapidoid.config.Conf;
 import org.rapidoid.config.Config;
 import org.rapidoid.config.RapidoidInitializer;
 import org.rapidoid.ctx.Ctxs;
 import org.rapidoid.data.JSON;
+import org.rapidoid.env.Env;
+import org.rapidoid.env.RapidoidEnv;
 import org.rapidoid.http.FastHttp;
 import org.rapidoid.http.HttpRoutes;
 import org.rapidoid.http.ReqHandler;
 import org.rapidoid.http.ReqRespHandler;
 import org.rapidoid.http.customize.Customization;
+import org.rapidoid.http.customize.ViewResolver;
 import org.rapidoid.http.handler.HttpHandler;
 import org.rapidoid.http.handler.optimized.DelegatingParamsAwareReqHandler;
 import org.rapidoid.http.handler.optimized.DelegatingParamsAwareReqRespHandler;
+import org.rapidoid.http.impl.AbstractViewResolver;
 import org.rapidoid.http.impl.HttpRoutesImpl;
 import org.rapidoid.http.impl.RouteOptions;
 import org.rapidoid.http.processor.HttpProcessor;
@@ -35,9 +39,7 @@ import org.rapidoid.util.Constants;
 import org.rapidoid.util.Msc;
 import org.rapidoid.util.Once;
 
-import javax.inject.Named;
-import javax.inject.Singleton;
-import java.lang.annotation.Annotation;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -45,7 +47,7 @@ import java.util.Map;
  * #%L
  * rapidoid-http-server
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -65,12 +67,10 @@ import java.util.Map;
 @Since("5.1.0")
 public class Setup extends RapidoidInitializer implements Constants {
 
-	public static final Class<? extends Annotation>[] ANNOTATIONS = new Class[]{
-		Controller.class, Service.class, Run.class, Named.class, Singleton.class
-	};
+	private static final String ADMIN_ZONE = Msc.isPlatform() ? "platform" : "admin";
 
-	static final Setup ON = new Setup("app", "main", "0.0.0.0", 8888, IoC.defaultContext(), Conf.ROOT, Conf.ON);
-	static final Setup ADMIN = new Setup("admin", "admin", "0.0.0.0", 8888, IoC.defaultContext(), Conf.ROOT, Conf.ADMIN);
+	static final Setup ON = new Setup("app", "main", "0.0.0.0", 8080, IoC.defaultContext(), Conf.ROOT, Conf.ON);
+	static final Setup ADMIN = new Setup("admin", ADMIN_ZONE, "0.0.0.0", 8080, IoC.defaultContext(), Conf.ROOT, Conf.ADMIN);
 
 	private static final List<Setup> instances = Coll.synchronizedList(ON, ADMIN);
 
@@ -121,7 +121,7 @@ public class Setup extends RapidoidInitializer implements Constants {
 	public static Setup create(String name) {
 		IoCContext ioc = IoC.createContext().name(name);
 		Config config = Conf.section(name);
-		Setup setup = new Setup(name, "main", "0.0.0.0", 8888, ioc, config, config);
+		Setup setup = new Setup(name, "main", "0.0.0.0", 8080, ioc, config, config);
 		instances.add(setup);
 		return setup;
 	}
@@ -248,6 +248,8 @@ public class Setup extends RapidoidInitializer implements Constants {
 	}
 
 	public synchronized void activate() {
+		RapidoidEnv.touch();
+
 		if (activated) {
 			return;
 		}
@@ -337,6 +339,7 @@ public class Setup extends RapidoidInitializer implements Constants {
 	}
 
 	public Setup beans(Object... beans) {
+		RapidoidEnv.touch();
 		beans = AnyObj.flat(beans);
 
 		for (Object bean : beans) {
@@ -465,6 +468,12 @@ public class Setup extends RapidoidInitializer implements Constants {
 		defaults = new RouteOptions();
 		defaults.zone(zone);
 		attributes().clear();
+
+		ViewResolver viewResolver = custom().viewResolver();
+		if (viewResolver instanceof AbstractViewResolver) {
+			((AbstractViewResolver) viewResolver).reset();
+		}
+
 		initDefaults();
 	}
 
@@ -474,13 +483,15 @@ public class Setup extends RapidoidInitializer implements Constants {
 		ADMIN.routes().onInit(new Runnable() {
 			@Override
 			public void run() {
-				AuthBootstrap.bootstrapAdminCredentials();
+				if (Env.dev()) {
+					AuthBootstrap.bootstrapAdminCredentials();
+				}
 			}
 		});
 	}
 
 	public static List<Setup> instances() {
-		return instances;
+		return Collections.unmodifiableList(instances);
 	}
 
 	public Config config() {
@@ -579,7 +590,7 @@ public class Setup extends RapidoidInitializer implements Constants {
 	}
 
 	public void register(Beans beans) {
-		beans(beans.getAnnotated(U.set(ANNOTATIONS)));
+		beans(beans.getAnnotated(U.set(IoC.ANNOTATIONS)));
 	}
 
 }

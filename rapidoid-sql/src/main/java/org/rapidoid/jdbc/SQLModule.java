@@ -4,7 +4,7 @@ package org.rapidoid.jdbc;
  * #%L
  * rapidoid-sql
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,54 +23,47 @@ package org.rapidoid.jdbc;
 import org.rapidoid.RapidoidModule;
 import org.rapidoid.RapidoidThing;
 import org.rapidoid.annotation.Authors;
-import org.rapidoid.annotation.Since;
-import org.rapidoid.jdbc.JDBC;
-import org.rapidoid.jdbc.JdbcClient;
+import org.rapidoid.annotation.RapidoidModuleDesc;
 import org.rapidoid.log.Log;
 
 @Authors("Nikolche Mihajlovski")
-@Since("5.3.0")
+@RapidoidModuleDesc(name = "SQL", order = 500)
 public class SQLModule extends RapidoidThing implements RapidoidModule {
 
 	private static final String HSQLDB_DRIVER = "org.hsqldb.jdbc.JDBCDriver";
 
-	private static final String HSQLDB_TRUNCATE = "TRUNCATE SCHEMA PUBLIC RESTART IDENTITY AND COMMIT NO CHECK";
+	public static final String HSQLDB_TRUNCATE = "TRUNCATE SCHEMA PUBLIC RESTART IDENTITY AND COMMIT NO CHECK";
 
-	private static final String HSQLDB_DROP_ALL = "DROP SCHEMA public CASCADE";
+	public static final String HSQLDB_DROP_ALL = "DROP SCHEMA public CASCADE";
 
 	private static final String H2_DRIVER = "org.h2.Driver";
 
-	private static final String H2_DROP_ALL = "DROP ALL OBJECTS DELETE FILES";
+	public static final String H2_DROP_ALL = "DROP ALL OBJECTS DELETE FILES";
 
 	@Override
-	public String name() {
-		return "SQL";
-	}
-
-	@Override
-	public void beforeTest(Object test, boolean isIntegrationTest) {
+	public void beforeTest(Object test) {
 		JDBC.reset();
 	}
 
 	@Override
-	public void afterTest(Object test, boolean isIntegrationTest) {
+	public void afterTest(Object test) {
 		cleanInMemDatabases();
 
 		JDBC.reset();
 	}
 
 	private void cleanInMemDatabases() {
-		JdbcClient jdbc = JDBC.defaultApi();
+		JdbcClient jdbc = JDBC.defaultApi().usePool(false);
 
 		if (HSQLDB_DRIVER.equals(jdbc.driver())) {
 			Log.info("Dropping all objects in the HSQLDB database");
-			JDBC.execute(HSQLDB_TRUNCATE);
-			JDBC.execute(HSQLDB_DROP_ALL);
+			jdbc.execute(HSQLDB_TRUNCATE);
+			jdbc.execute(HSQLDB_DROP_ALL);
 		}
 
 		if (H2_DRIVER.equals(jdbc.driver())) {
 			Log.info("Dropping all objects in the H2 database");
-			JDBC.execute(H2_DROP_ALL);
+			jdbc.execute(H2_DROP_ALL);
 		}
 	}
 

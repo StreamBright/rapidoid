@@ -24,12 +24,14 @@ import org.rapidoid.insight.Insights;
 import org.rapidoid.io.IO;
 import org.rapidoid.io.Res;
 import org.rapidoid.lambda.*;
+import org.rapidoid.log.GlobalCfg;
 import org.rapidoid.log.Log;
-import org.rapidoid.log.LogLevel;
 import org.rapidoid.u.U;
 import org.rapidoid.validation.InvalidData;
 import org.rapidoid.wrap.BoolWrap;
 
+import javax.validation.ConstraintViolation;
+import javax.validation.ConstraintViolationException;
 import java.io.*;
 import java.lang.annotation.Annotation;
 import java.lang.management.ManagementFactory;
@@ -43,15 +45,19 @@ import java.net.URLEncoder;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.Map.Entry;
-import java.util.concurrent.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 /*
  * #%L
  * rapidoid-commons
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -78,6 +84,8 @@ public class Msc extends RapidoidThing implements Constants {
 	private static volatile String uid;
 
 	private static volatile long measureStart;
+
+	private static boolean platform;
 
 	public static final ScheduledThreadPoolExecutor EXECUTOR = new ScheduledThreadPoolExecutor(8,
 		new RapidoidThreadFactory("utils", true));
@@ -232,16 +240,6 @@ public class Msc extends RapidoidThing implements Constants {
 		} catch (InterruptedException e) {
 			Thread.interrupted();
 			return false;
-		}
-	}
-
-	public static void waitFor(Object obj) {
-		try {
-			synchronized (obj) {
-				obj.wait();
-			}
-		} catch (InterruptedException e) {
-			// do nothing
 		}
 	}
 
@@ -640,22 +638,6 @@ public class Msc extends RapidoidThing implements Constants {
 		return arr;
 	}
 
-	public static void wait(CountDownLatch latch) {
-		try {
-			latch.await();
-		} catch (InterruptedException e) {
-			throw new CancellationException();
-		}
-	}
-
-	public static void wait(CountDownLatch latch, long timeout, TimeUnit unit) {
-		try {
-			latch.await(timeout, unit);
-		} catch (InterruptedException e) {
-			throw new CancellationException();
-		}
-	}
-
 	public static boolean exists(Callable<?> accessChain) {
 		try {
 			return accessChain != null && accessChain.call() != null;
@@ -826,12 +808,20 @@ public class Msc extends RapidoidThing implements Constants {
 		return Cls.exists("org.rapidoid.reload.Reload");
 	}
 
+	public static boolean hasRapidoidPlatform() {
+		return Cls.exists("org.rapidoid.standalone.Main");
+	}
+
 	public static boolean hasLogback() {
 		return Cls.exists("ch.qos.logback.classic.Logger");
 	}
 
 	public static boolean hasSlf4jImpl() {
 		return Cls.exists("org.slf4j.impl.StaticLoggerBinder");
+	}
+
+	public static boolean hasMavenEmbedder() {
+		return Cls.exists("org.apache.maven.cli.MavenCli");
 	}
 
 	public static boolean isValidationError(Throwable error) {
@@ -850,7 +840,7 @@ public class Msc extends RapidoidThing implements Constants {
 			pageTo = Math.min(pageTo, size);
 		}
 
-		List<?> range = Coll.range(items, pageFrom, pageTo);
+		List<?> range = U.list(Coll.range(items, pageFrom, pageTo));
 		isLastPage.value = range.size() < pageSize + 1;
 
 		if (!isLastPage.value && !range.isEmpty()) {
@@ -1027,7 +1017,7 @@ public class Msc extends RapidoidThing implements Constants {
 	public static void reset() {
 		Env.reset();
 		Events.reset();
-		Log.setLogLevel(LogLevel.INFO);
+		Log.reset();
 		Crypto.reset();
 		Res.reset();
 		AppInfo.reset();
@@ -1138,11 +1128,11 @@ public class Msc extends RapidoidThing implements Constants {
 		switch (sep) {
 
 			case "->":
-				left = "proxy." + left;
+				left = "proxy." + left + ".upstream"; // FIXME use :
 				break;
 
 			case "<=":
-				left = "sql." + left;
+				left = "api." + left + ".sql";
 				break;
 
 			default:
@@ -1158,6 +1148,187 @@ public class Msc extends RapidoidThing implements Constants {
 		}
 
 		return !Msc.isInsideTest() && Env.dev();
+	}
+
+	public static String fileSizeReadable(String filename) {
+		long sizeKB = Math.round(new File(filename).length() / 1024.0);
+		return sizeKB + " KB";
+	}
+
+	public static void watchForChanges(String path, Operation<String> changeListener) {
+		Class<?> watch = Cls.getClassIfExists("org.rapidoid.io.watch.Watch");
+
+		if (watch != null) {
+			Method dir = Cls.getMethod(watch, "dir", String.class, Operation.class);
+			Cls.invokeStatic(dir, path, changeListener);
+		}
+	}
+
+	public static byte[] uuidToBytes(UUID uuid) {
+		ByteBuffer buf = ByteBuffer.wrap(new byte[16]);
+
+		buf.putLong(uuid.getMostSignificantBits());
+		buf.putLong(uuid.getLeastSignificantBits());
+
+		return buf.array();
+	}
+
+	public static UUID bytesToUUID(byte[] bytes) {
+		ByteBuffer buf = ByteBuffer.wrap(bytes);
+		return new UUID(buf.getLong(), buf.getLong());
+	}
+
+	public static <T> T normalOrHeavy(T normal, T heavy) {
+		return System.getenv("HEAVY") != null || System.getProperty("HEAVY") != null ? heavy : normal;
+	}
+
+	public static Method getTestMethodIfExists() {
+		Method method = null;
+
+		for (StackTraceElement trc : Thread.currentThread().getStackTrace()) {
+			try {
+				Class<?> logCls = Class.forName(trc.getClassName());
+
+				for (Method m : logCls.getMethods()) {
+					if (m.getName().equals(trc.getMethodName())) {
+						for (Annotation ann : m.getDeclaredAnnotations()) {
+							if (ann.annotationType().getSimpleName().equals("Test")) {
+								method = m;
+							}
+						}
+					}
+				}
+
+			} catch (Exception e) {
+				// do nothing
+			}
+		}
+
+		return method;
+	}
+
+
+	public static void setPlatform(boolean platform) {
+		Msc.platform = platform;
+	}
+
+	public static boolean isPlatform() {
+		return platform;
+	}
+
+	public static String errorMsg(Throwable error) {
+		return getErrorCodeAndMsg(error).msg();
+	}
+
+	public static ErrCodeAndMsg getErrorCodeAndMsg(Throwable err) {
+		Throwable cause = Msc.rootCause(err);
+
+		int code;
+		String defaultMsg;
+		String msg = cause.getMessage();
+
+		if (cause instanceof SecurityException) {
+			code = 403;
+			defaultMsg = "Access Denied!";
+
+		} else if (cause.getClass().getSimpleName().equals("NotFound")) {
+			code = 404;
+			defaultMsg = "The requested resource could not be found!";
+
+		} else if (Msc.isValidationError(cause)) {
+			code = 422;
+			defaultMsg = "Validation Error!";
+
+			if (cause.getClass().getName().equals("javax.validation.ConstraintViolationException")) {
+				Set<ConstraintViolation<?>> violations = ((ConstraintViolationException) cause).getConstraintViolations();
+
+				StringBuilder sb = new StringBuilder();
+				sb.append("Validation failed: ");
+
+				for (Iterator<ConstraintViolation<?>> it = U.safe(violations).iterator(); it.hasNext(); ) {
+					ConstraintViolation<?> v = it.next();
+
+					sb.append(v.getRootBeanClass().getSimpleName());
+					sb.append(".");
+					sb.append(v.getPropertyPath());
+					sb.append(" (");
+					sb.append(v.getMessage());
+					sb.append(")");
+
+					if (it.hasNext()) {
+						sb.append(", ");
+					}
+				}
+
+				msg = sb.toString();
+			}
+
+		} else {
+			code = 500;
+			defaultMsg = "Internal Server Error!";
+		}
+
+		msg = U.or(msg, defaultMsg);
+		return new ErrCodeAndMsg(code, msg);
+	}
+
+	public static String detectZipRoot(InputStream zip) {
+		Set<String> roots = U.set();
+
+		try {
+
+			ZipInputStream zis = new ZipInputStream(zip);
+			ZipEntry ze = zis.getNextEntry();
+
+			while (ze != null) {
+
+				if (ze.isDirectory()) {
+					String fileName = ze.getName();
+					String parentDir = fileName.split("/|\\\\")[0];
+					roots.add(parentDir);
+				}
+
+				ze = zis.getNextEntry();
+			}
+
+			zis.closeEntry();
+			zis.close();
+
+		} catch (IOException e) {
+			throw U.rte(e);
+		}
+
+		return roots.size() == 1 ? U.single(roots) : null;
+	}
+
+	public static void unzip(InputStream zip, String destFolder) {
+		try {
+			File folder = new File(destFolder);
+			folder.mkdirs();
+
+			ZipInputStream zis = new ZipInputStream(zip);
+			ZipEntry ze = zis.getNextEntry();
+
+			while (ze != null) {
+
+				if (!ze.isDirectory()) {
+					String fileName = ze.getName();
+
+					File newFile = new File(destFolder + File.separator + fileName);
+					newFile.getParentFile().mkdirs();
+
+					IO.save(newFile.getAbsolutePath(), IO.loadBytes(zis));
+				}
+
+				ze = zis.getNextEntry();
+			}
+
+			zis.closeEntry();
+			zis.close();
+
+		} catch (IOException e) {
+			throw U.rte(e);
+		}
 	}
 
 }

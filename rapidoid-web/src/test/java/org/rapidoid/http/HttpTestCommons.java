@@ -4,7 +4,7 @@ package org.rapidoid.http;
  * #%L
  * rapidoid-web
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,7 +48,7 @@ public abstract class HttpTestCommons extends TestCommons {
 	// FIXME HEAD
 	private static final List<String> HTTP_VERBS = U.list("GET", "DELETE", "OPTIONS", "TRACE", "POST", "PUT", "PATCH");
 
-	public static final int DEFAULT_PORT = 8888;
+	public static final int DEFAULT_PORT = 8080;
 
 	@Before
 	public void openContext() {
@@ -247,7 +247,7 @@ public abstract class HttpTestCommons extends TestCommons {
 	}
 
 	protected void raw(byte[] req) {
-		String resp = new String(Msc.writeAndRead("localhost", 8888, req, 1000));
+		String resp = new String(Msc.writeAndRead("localhost", 8080, req, 1000));
 		resp = resp.replaceFirst("Date: .*? GMT", "Date: XXXXX GMT");
 
 		resp = new String(req) + "--------------------------------------------------------\n" + resp + "<END>";

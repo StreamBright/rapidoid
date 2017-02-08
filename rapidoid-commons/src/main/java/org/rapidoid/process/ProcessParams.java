@@ -4,7 +4,7 @@ package org.rapidoid.process;
  * #%L
  * rapidoid-commons
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,11 +30,21 @@ import java.io.File;
 @Since("5.3.0")
 public class ProcessParams extends RapidoidThing {
 
+	private volatile String id;
+
 	private volatile File in;
 
 	private volatile String[] command;
 
 	private volatile Processes group = Processes.DEFAULT;
+
+	private volatile boolean printingOutput;
+
+	private volatile String linePrefix = "";
+
+	private volatile int maxLogLines = 10000;
+
+	private volatile int terminationTimeout = 5000;
 
 	public File in() {
 		return in;
@@ -43,6 +53,10 @@ public class ProcessParams extends RapidoidThing {
 	public ProcessParams in(File in) {
 		this.in = in;
 		return this;
+	}
+
+	public ProcessParams in(String in) {
+		return in(new File(in));
 	}
 
 	public String[] command() {
@@ -60,7 +74,55 @@ public class ProcessParams extends RapidoidThing {
 
 	public ProcessHandle run(String... command) {
 		this.command = command;
-		return ProcessHandle.startProcess(this);
+
+		ProcessHandle handle = new ProcessHandle(this);
+		handle.startProcess(this);
+
+		return handle;
 	}
 
+	public boolean printingOutput() {
+		return printingOutput;
+	}
+
+	public ProcessParams printingOutput(boolean printingOutput) {
+		this.printingOutput = printingOutput;
+		return this;
+	}
+
+	public String linePrefix() {
+		return linePrefix;
+	}
+
+	public ProcessParams linePrefix(String linePrefix) {
+		this.linePrefix = linePrefix;
+		return this;
+	}
+
+	public String id() {
+		return id;
+	}
+
+	public ProcessParams id(String id) {
+		this.id = id;
+		return this;
+	}
+
+	public int maxLogLines() {
+		return maxLogLines;
+	}
+
+	public ProcessParams maxLogLines(int maxLogLines) {
+		this.maxLogLines = maxLogLines;
+		return this;
+	}
+
+	public int terminationTimeout() {
+		return terminationTimeout;
+	}
+
+	public ProcessParams terminationTimeout(int terminationTimeout) {
+		this.terminationTimeout = terminationTimeout;
+		return this;
+	}
 }

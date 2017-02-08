@@ -4,7 +4,7 @@ package org.rapidoid.config;
  * #%L
  * rapidoid-commons
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,10 +23,12 @@ package org.rapidoid.config;
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
 import org.rapidoid.collection.Coll;
+import org.rapidoid.env.RapidoidEnv;
 import org.rapidoid.log.Log;
 import org.rapidoid.u.U;
 
 import java.util.Map;
+import java.util.Set;
 
 @Authors("Nikolche Mihajlovski")
 @Since("5.2.0")
@@ -39,6 +41,8 @@ public class ConfigBase extends RapidoidInitializer {
 	final Map<String, Object> properties = Coll.synchronizedMap();
 
 	final Map<String, Object> initial = Coll.synchronizedMap();
+
+	final Set<ConfigChangeListener> configChangesListeners = Coll.synchronizedSet();
 
 	volatile boolean initializing;
 
@@ -57,6 +61,7 @@ public class ConfigBase extends RapidoidInitializer {
 	synchronized void reset() {
 		this.properties.clear();
 		this.initial.clear();
+		this.configChangesListeners.clear();
 
 		this.filenameBase = this.defaultFilenameBase;
 		this.path = "";
@@ -66,6 +71,7 @@ public class ConfigBase extends RapidoidInitializer {
 	}
 
 	synchronized void invalidate() {
+		RapidoidEnv.touch();
 		this.properties.clear();
 
 		this.initialized = false;
@@ -77,6 +83,7 @@ public class ConfigBase extends RapidoidInitializer {
 	}
 
 	synchronized boolean setFilenameBase(String filenameBase) {
+		RapidoidEnv.touch();
 
 		if (U.neq(this.filenameBase, filenameBase)) {
 			Log.info("Changing configuration filename base", "!from", this.filenameBase, "!to", filenameBase);
@@ -89,6 +96,7 @@ public class ConfigBase extends RapidoidInitializer {
 	}
 
 	boolean setPath(String path) {
+		RapidoidEnv.touch();
 
 		if (U.neq(this.path, path)) {
 			Log.info("Changing configuration path", "!from", this.path, "!to", path);

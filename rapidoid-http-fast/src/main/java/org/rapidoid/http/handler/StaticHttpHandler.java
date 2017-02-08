@@ -4,7 +4,7 @@ package org.rapidoid.http.handler;
  * #%L
  * rapidoid-http-fast
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,9 +22,10 @@ package org.rapidoid.http.handler;
 
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
-import org.rapidoid.http.impl.HttpIO;
 import org.rapidoid.http.HttpStatus;
+import org.rapidoid.http.HttpUtils;
 import org.rapidoid.http.Req;
+import org.rapidoid.http.impl.lowlevel.HttpIO;
 import org.rapidoid.http.impl.RouteOptions;
 import org.rapidoid.net.abstracts.Channel;
 import org.rapidoid.u.U;
@@ -42,7 +43,7 @@ public class StaticHttpHandler extends AbstractHttpHandler {
 
 	@Override
 	public HttpStatus handle(Channel ctx, boolean isKeepAlive, Req req, Object extra) {
-		HttpIO.write200(ctx, isKeepAlive, contentType, response);
+		HttpIO.INSTANCE.write200(HttpUtils.maybe(req), ctx, isKeepAlive, contentType, response);
 		return HttpStatus.DONE;
 	}
 

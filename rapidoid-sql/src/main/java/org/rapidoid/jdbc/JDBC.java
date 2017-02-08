@@ -7,16 +7,18 @@ import org.rapidoid.beany.Beany;
 import org.rapidoid.beany.Prop;
 import org.rapidoid.cls.Cls;
 import org.rapidoid.u.U;
+import org.rapidoid.util.Msc;
 
 import java.sql.*;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /*
  * #%L
  * rapidoid-sql
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -98,12 +100,16 @@ public class JDBC extends RapidoidThing {
 		return defaultApi().hsql(databaseName);
 	}
 
-	public static void execute(String sql, Object... args) {
-		defaultApi().execute(sql, args);
+	public static int execute(String sql, Object... args) {
+		return defaultApi().execute(sql, args);
 	}
 
 	public static void tryToExecute(String sql, Object... args) {
 		defaultApi().tryToExecute(sql, args);
+	}
+
+	public static <T> List<T> query(Class<T> resultType, String sql, Object... args) {
+		return defaultApi().query(resultType, sql, args);
 	}
 
 	public static <T> List<Map<String, Object>> query(String sql, Object... args) {
@@ -133,7 +139,20 @@ public class JDBC extends RapidoidThing {
 
 	public static void bind(PreparedStatement stmt, Object... args) throws SQLException {
 		for (int i = 0; i < args.length; i++) {
-			stmt.setObject(i + 1, args[i]);
+			Object arg = args[i];
+
+			if (arg instanceof byte[]) {
+				byte[] bytes = (byte[]) arg;
+				stmt.setBytes(i + 1, bytes);
+
+			} else if (arg instanceof UUID) {
+				UUID uuid = (UUID) arg;
+				byte[] bytes = Msc.uuidToBytes(uuid);
+				stmt.setBytes(i + 1, bytes);
+
+			} else {
+				stmt.setObject(i + 1, arg);
+			}
 		}
 	}
 
@@ -146,15 +165,17 @@ public class JDBC extends RapidoidThing {
 
 		for (int i = 0; i < props.length; i++) {
 			String name = meta.getColumnLabel(i + 1);
-			props[i] = Beany.property(resultType, name, true);
+			props[i] = Beany.property(resultType, name, false);
 		}
 
 		while (rs.next()) {
 			T row = Cls.newInstance(resultType);
 
 			for (int i = 0; i < columnsN; i++) {
-				Object value = rs.getObject(i + 1); // 1-indexed
-				props[i].set(row, value);
+				if (props[i] != null) {
+					Object value = rs.getObject(i + 1); // 1-indexed
+					props[i].set(row, value);
+				}
 			}
 
 			rows.add(row);

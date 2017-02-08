@@ -4,7 +4,7 @@ package org.rapidoid.http;
  * #%L
  * rapidoid-integration-tests
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ import org.rapidoid.commons.Err;
 import org.rapidoid.ctx.Contextual;
 import org.rapidoid.ctx.With;
 import org.rapidoid.u.U;
-import org.rapidoid.util.Msc;
+import org.rapidoid.util.Wait;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -62,7 +62,7 @@ public class WithContextTest extends IsolatedIntegrationTest {
 
 		eq(ctxInfo(), "null:[]:false");
 
-		Msc.wait(latch, 10, TimeUnit.SECONDS);
+		Wait.on(latch, 10, TimeUnit.SECONDS);
 		eq(latch.getCount(), 0);
 
 		eq(ctxInfo(), "null:[]:false");

@@ -4,7 +4,7 @@ package org.rapidoid.setup;
  * #%L
  * rapidoid-http-server
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,42 +20,34 @@ package org.rapidoid.setup;
  * #L%
  */
 
-import org.rapidoid.RapidoidThing;
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
+import org.rapidoid.beany.Beany;
 import org.rapidoid.collection.Coll;
 import org.rapidoid.commons.Arr;
-import org.rapidoid.env.Env;
 import org.rapidoid.config.Conf;
-import org.rapidoid.config.ConfigHelp;
+import org.rapidoid.config.RapidoidInitializer;
 import org.rapidoid.data.JSON;
-import org.rapidoid.http.HttpVerb;
-import org.rapidoid.http.Req;
-import org.rapidoid.http.ReqRespHandler;
-import org.rapidoid.http.Resp;
+import org.rapidoid.env.Env;
 import org.rapidoid.io.Res;
 import org.rapidoid.ioc.Beans;
 import org.rapidoid.ioc.IoC;
 import org.rapidoid.ioc.IoCContext;
-import org.rapidoid.job.Jobs;
-import org.rapidoid.lambda.Mapper;
 import org.rapidoid.log.Log;
 import org.rapidoid.render.Templates;
 import org.rapidoid.reverseproxy.Reverse;
+import org.rapidoid.scan.ClasspathScanner;
 import org.rapidoid.scan.ClasspathUtil;
 import org.rapidoid.scan.Scan;
-import org.rapidoid.jdbc.JDBC;
 import org.rapidoid.u.U;
 import org.rapidoid.util.Msc;
 
-import java.lang.annotation.Annotation;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 @Authors("Nikolche Mihajlovski")
 @Since("5.1.0")
-public class App extends RapidoidThing {
+public class App extends RapidoidInitializer {
 
 	private static volatile String[] path;
 
@@ -69,31 +61,12 @@ public class App extends RapidoidThing {
 
 	static volatile ClassLoader loader = App.class.getClassLoader();
 
-	private static Map<List<String>, List<Class<?>>> beansCache = Coll.autoExpandingMap(new Mapper<List<String>, List<Class<?>>>() {
-		@SuppressWarnings("unchecked")
-		@Override
-		public List<Class<?>> map(List<String> packages) throws Exception {
-			String[] pkgs = U.arrayOf(String.class, packages);
-			return Scan.annotated((Class<? extends Annotation>[]) Setup.ANNOTATIONS).in(pkgs).loadAll();
-		}
-	});
-
-	public static void args(String[] args, String... extraArgs) {
-		args = Arr.concat(extraArgs, args);
-
-		ConfigHelp.processHelp(args);
-
-		Env.setArgs(args);
-
-		AppVerification.selfVerify(args);
-	}
-
 	public static AppBootstrap bootstrap(String[] args, String... extraArgs) {
 		args = Arr.concat(extraArgs, args);
 
-		args(args);
+		PreApp.args(args);
 
-		if (!managed) scan();
+		scan();
 
 		return boot();
 	}
@@ -101,69 +74,23 @@ public class App extends RapidoidThing {
 	public static AppBootstrap run(String[] args, String... extraArgs) {
 		args = Arr.concat(extraArgs, args);
 
-		args(args);
+		PreApp.args(args);
 		// no implicit classpath scanning here
 
 		return boot();
 	}
 
-	private static AppBootstrap boot() {
-		Jobs.initialize();
-
-		bootstrapProxy();
-		bootstrapSqlRoutes();
+	public static AppBootstrap boot() {
+		registerConfigListeners();
 
 		AppBootstrap bootstrap = new AppBootstrap();
 		bootstrap.services();
 		return bootstrap;
 	}
 
-	private static void bootstrapProxy() {
-		if (!Conf.PROXY.isEmpty()) {
-			for (Map.Entry<String, Object> e : Conf.PROXY.toMap().entrySet()) {
-				String uri = e.getKey();
-				String upstream = (String) e.getValue();
-				Reverse.proxy().map(uri).to(upstream.split("\\s*\\,\\s*"));
-			}
-		}
-	}
-
-	private static void bootstrapSqlRoutes() {
-		if (!Conf.SQL.isEmpty()) {
-			for (Map.Entry<String, Object> e : Conf.SQL.toMap().entrySet()) {
-
-				String[] verbUri = e.getKey().trim().split("\\s+");
-
-				final HttpVerb verb;
-				String uri;
-
-				if (verbUri.length == 1) {
-					verb = HttpVerb.GET;
-					uri = verbUri[0];
-
-				} else if (verbUri.length == 2) {
-					verb = HttpVerb.from(verbUri[0]);
-					uri = verbUri[1];
-
-				} else {
-					throw U.rte("Invalid route!");
-				}
-
-				final String sql = (String) e.getValue();
-
-				On.route(verb.name(), uri).json(new ReqRespHandler() {
-					@Override
-					public Object execute(Req req, Resp resp) throws Exception {
-						if (verb == HttpVerb.GET) {
-							return JDBC.query(sql);
-						} else {
-							JDBC.execute(sql);
-							return U.map("success", true); // FIXME improve
-						}
-					}
-				});
-			}
-		}
+	public static void registerConfigListeners() {
+		Conf.PROXY.addChangeListener(new ProxyConfigListener());
+		Conf.API.addChangeListener(new APIConfigListener());
 	}
 
 	public static void profiles(String... profiles) {
@@ -232,16 +159,19 @@ public class App extends RapidoidThing {
 		Res.reset();
 		Templates.reset();
 		JSON.reset();
+		Beany.reset();
 
 		AppBootstrap.reset();
-		beansCache.clear();
+		ClasspathScanner.reset();
 		invoked.clear();
 
 		for (Setup setup : Setup.instances()) {
 			setup.reload();
 		}
 
-		Setup.initDefaults();
+		Conf.reset(); // reset the config again
+		Setup.initDefaults(); // this changes the config
+		Conf.reset(); // reset the config again
 
 		if (Msc.hasRapidoidJPA()) {
 			loader = ReloadUtil.reloader();
@@ -279,7 +209,6 @@ public class App extends RapidoidThing {
 		loader = App.class.getClassLoader();
 		Setup.initDefaults();
 		AppBootstrap.reset();
-		beansCache.clear();
 		invoked.clear();
 		Reverse.reset();
 	}
@@ -307,9 +236,7 @@ public class App extends RapidoidThing {
 			packages = path();
 		}
 
-		List<String> pkgs = U.notEmpty(packages) ? U.list(packages) : U.<String>list();
-
-		return beansCache.get(pkgs);
+		return Scan.annotated(IoC.ANNOTATIONS).in(packages).loadAll();
 	}
 
 	public static boolean scan(String... packages) {

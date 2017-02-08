@@ -9,7 +9,7 @@ import org.rapidoid.u.U;
  * #%L
  * rapidoid-commons
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,11 +34,11 @@ public abstract class AbstractMapImpl<K, V> extends RapidoidThing implements Sim
 	protected V defaultValue;
 
 	public AbstractMapImpl(int width) {
-		this.entries = new SimpleHashTable<MapEntry<K, V>>(width);
+		this.entries = new SimpleHashTable<>(width);
 	}
 
 	public AbstractMapImpl(int width, int initialBucketSize) {
-		this.entries = new SimpleHashTable<MapEntry<K, V>>(width, initialBucketSize);
+		this.entries = new SimpleHashTable<>(width, initialBucketSize);
 	}
 
 	@Override
@@ -65,7 +65,7 @@ public abstract class AbstractMapImpl<K, V> extends RapidoidThing implements Sim
 		for (int i = 0; i < bucket.size(); i++) {
 			MapEntry<K, V> entry = bucket.get(i);
 
-			if (U.eq(entry.key, key)) {
+			if (entry != null && U.eq(entry.key, key)) {
 				return entry;
 			}
 		}

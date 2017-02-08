@@ -3,6 +3,8 @@ package org.rapidoid.http.impl;
 import org.rapidoid.RapidoidThing;
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
+import org.rapidoid.cache.Caching;
+import org.rapidoid.cache.Cache;
 import org.rapidoid.http.HttpVerb;
 import org.rapidoid.http.Route;
 import org.rapidoid.http.RouteConfig;
@@ -13,7 +15,7 @@ import org.rapidoid.u.U;
  * #%L
  * rapidoid-http-fast
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,11 +43,26 @@ public class RouteImpl extends RapidoidThing implements Route {
 
 	private volatile RouteOptions options;
 
+	private final Cache<HTTPCacheKey, CachedResp> cache;
+
 	public RouteImpl(HttpVerb verb, String path, HttpHandler handler, RouteOptions options) {
 		this.verb = verb;
 		this.path = path;
 		this.handler = handler;
 		this.options = options;
+		this.cache = createCache();
+	}
+
+	public static RouteImpl matching(HttpVerb verb, String path) {
+		return new RouteImpl(verb, path, null, null);
+	}
+
+	protected Cache<HTTPCacheKey, CachedResp> createCache() {
+		if (options == null || options.cacheTTL() <= 0) return null;
+
+		return Caching.of(HTTPCacheKey.class, CachedResp.class)
+			.ttl(options.cacheTTL())
+			.build();
 	}
 
 	@Override
@@ -81,7 +98,9 @@ public class RouteImpl extends RapidoidThing implements Route {
 
 	@Override
 	public String toString() {
-		return U.frmt("Route %s %s [zone %s] roles %s : %s", verb, path, config().zone(), config().roles(), handler);
+		RouteConfig cfg = config();
+		return U.frmt("Route %s %s [zone %s] roles %s (TTL=%s) : %s",
+			verb, path, cfg.zone(), cfg.roles(), cfg.cacheTTL(), handler);
 	}
 
 	@Override
@@ -96,4 +115,8 @@ public class RouteImpl extends RapidoidThing implements Route {
 		return this;
 	}
 
+	@Override
+	public Cache<HTTPCacheKey, CachedResp> cache() {
+		return cache;
+	}
 }

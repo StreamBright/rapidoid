@@ -4,6 +4,7 @@ import org.rapidoid.RapidoidThing;
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
 import org.rapidoid.annotation.ToString;
+import org.rapidoid.annotation.Transient;
 import org.rapidoid.cls.Cls;
 import org.rapidoid.cls.TypeKind;
 import org.rapidoid.collection.Coll;
@@ -25,7 +26,7 @@ import java.util.Map.Entry;
  * #%L
  * rapidoid-commons
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -91,7 +92,8 @@ public class Beany extends RapidoidThing {
 				String name = method.getName();
 
 				if (!name.startsWith("_") && !name.contains("$")
-					&& !Modifier.isPrivate(modif) && !Modifier.isProtected(modif) && !Modifier.isStatic(modif)) {
+					&& !Modifier.isPrivate(modif) && !Modifier.isProtected(modif) && !Modifier.isStatic(modif)
+					&& !method.isAnnotationPresent(Transient.class)) {
 
 					if ((name.matches(GETTER) && params.length == 0) || (name.matches(SETTER) && params.length == 1)) {
 
@@ -148,8 +150,9 @@ public class Beany extends RapidoidThing {
 
 			// remove properties with setters, without getters
 			for (Iterator<Entry<String, BeanProp>> it = properties.entrySet().iterator(); it.hasNext(); ) {
-				Entry<String, BeanProp> entry = (Entry<String, BeanProp>) it.next();
+				Entry<String, BeanProp> entry = it.next();
 				BeanProp minfo = entry.getValue();
+
 				if (minfo.getGetter() == null && minfo.getSetter() != null) {
 					it.remove();
 				}
@@ -163,7 +166,9 @@ public class Beany extends RapidoidThing {
 
 					String fieldName = field.getName();
 
-					if (!fieldName.startsWith("_") && !fieldName.contains("$")) {
+					if (!fieldName.startsWith("_") && !fieldName.contains("$")
+						&& !field.isAnnotationPresent(Transient.class)) {
+
 						BeanProp prop = properties.get(fieldName);
 
 						if (prop == null) {
@@ -208,6 +213,10 @@ public class Beany extends RapidoidThing {
 
 		if (prop == null && JSProp.is(property)) {
 			prop = new JSProp(property);
+		}
+
+		if (prop == null && ActionsProp.is(property)) {
+			prop = new ActionsProp();
 		}
 
 		if (mandatory && prop == null) {

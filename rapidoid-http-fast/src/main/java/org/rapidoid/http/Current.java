@@ -4,7 +4,7 @@ package org.rapidoid.http;
  * #%L
  * rapidoid-http-fast
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,12 +48,20 @@ public class Current extends RapidoidThing {
 		return user().username != null;
 	}
 
+	public static boolean isLoggedInAs(String username) {
+		return username != null && username.equals(username());
+	}
+
 	public static String username() {
 		return user().username;
 	}
 
 	public static Set<String> roles() {
 		return user().roles;
+	}
+
+	public static boolean hasRole(String role) {
+		return roles().contains(role);
 	}
 
 	public static Set<String> scope() {

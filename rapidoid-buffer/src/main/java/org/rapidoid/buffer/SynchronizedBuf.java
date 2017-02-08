@@ -18,7 +18,7 @@ import java.nio.channels.WritableByteChannel;
  * #%L
  * rapidoid-buffer
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -105,8 +105,18 @@ public class SynchronizedBuf extends OutputStream implements Buf {
 	}
 
 	@Override
+	public int writeTo(WritableByteChannel channel, int srcOffset, int length) throws IOException {
+		return buf.writeTo(channel, srcOffset, length);
+	}
+
+	@Override
 	public synchronized int writeTo(ByteBuffer buffer) {
 		return buf.writeTo(buffer);
+	}
+
+	@Override
+	public int writeTo(ByteBuffer buffer, int srcOffset, int length) {
+		return buf.writeTo(buffer, srcOffset, length);
 	}
 
 	@Override

@@ -15,6 +15,7 @@ import org.rapidoid.commons.Err;
 import org.rapidoid.commons.Str;
 import org.rapidoid.io.IO;
 import org.rapidoid.u.U;
+import org.rapidoid.util.Msc;
 import org.rapidoid.var.Var;
 import org.rapidoid.var.Vars;
 
@@ -30,7 +31,7 @@ import java.util.regex.Pattern;
  * #%L
  * rapidoid-commons
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -81,7 +82,6 @@ public class Cls extends RapidoidThing {
 					Field field = c.getDeclaredField(fieldName);
 					field.setAccessible(true);
 					field.set(instance, value);
-					field.setAccessible(false);
 					return;
 				} catch (NoSuchFieldException e) {
 					// keep searching the filed in the super-class...
@@ -98,7 +98,6 @@ public class Cls extends RapidoidThing {
 		try {
 			field.setAccessible(true);
 			field.set(instance, value);
-			field.setAccessible(false);
 		} catch (Exception e) {
 			throw U.rte("Cannot set field value!", e);
 		}
@@ -134,7 +133,6 @@ public class Cls extends RapidoidThing {
 		try {
 			field.setAccessible(true);
 			Object value = field.get(instance);
-			field.setAccessible(false);
 
 			return value;
 		} catch (Exception e) {
@@ -304,7 +302,6 @@ public class Cls extends RapidoidThing {
 
 	@SuppressWarnings("unchecked")
 	public static <T> T invokeStatic(Method m, Object... args) {
-		boolean accessible = m.isAccessible();
 		try {
 			m.setAccessible(true);
 			return (T) m.invoke(null, args);
@@ -314,34 +311,26 @@ public class Cls extends RapidoidThing {
 			throw U.rte("Cannot statically invoke method '%s' with args: %s", e, m.getName(), Arrays.toString(args));
 		} catch (InvocationTargetException e) {
 			throw U.rte("Cannot statically invoke method '%s' with args: %s", e, m.getName(), Arrays.toString(args));
-		} finally {
-			m.setAccessible(accessible);
 		}
 	}
 
 	@SuppressWarnings("unchecked")
 	public static <T> T invoke(Method m, Object target, Object... args) {
-		boolean accessible = m.isAccessible();
 		try {
 			m.setAccessible(true);
 			return (T) m.invoke(target, args);
 		} catch (Exception e) {
 			throw U.rte("Cannot invoke method '%s' with args: %s", e, m.getName(), Arrays.toString(args));
-		} finally {
-			m.setAccessible(accessible);
 		}
 	}
 
 	@SuppressWarnings("unchecked")
 	public static <T> T invoke(Constructor<?> constructor, Object... args) {
-		boolean accessible = constructor.isAccessible();
 		try {
 			constructor.setAccessible(true);
 			return (T) constructor.newInstance(args);
 		} catch (Exception e) {
 			throw U.rte("Cannot invoke method '%s' with args: %s", e, constructor.getName(), Arrays.toString(args));
-		} finally {
-			constructor.setAccessible(accessible);
 		}
 	}
 
@@ -555,7 +544,7 @@ public class Cls extends RapidoidThing {
 				return (T) UUID.fromString(value);
 
 			default:
-				throw Err.notExpected();
+				throw U.rte("Cannot convert String to type '%s'!", toType);
 		}
 	}
 
@@ -673,6 +662,14 @@ public class Cls extends RapidoidThing {
 					throw U.rte("Cannot convert the value '%s' to date!", value);
 				}
 
+			case UUID:
+				if (value instanceof byte[]) {
+					return (T) Msc.bytesToUUID((byte[]) value);
+				} else {
+					throw U.rte("Cannot convert the value '%s' to UUID!", value);
+				}
+
+
 			default:
 				throw Err.notExpected();
 		}
@@ -716,8 +713,9 @@ public class Cls extends RapidoidThing {
 		return (Class<T>) (type instanceof Class ? type : Object.class);
 	}
 
-	public static Class<?> of(Object obj) {
-		return obj != null ? obj.getClass() : Object.class;
+	@SuppressWarnings("unchecked")
+	public static <T> Class<T> of(T obj) {
+		return (Class<T>) (obj != null ? obj.getClass() : Object.class);
 	}
 
 	public static String str(Object value) {
@@ -829,13 +827,9 @@ public class Cls extends RapidoidThing {
 	public static <T> T newBeanInstance(Class<T> clazz) {
 		try {
 			Constructor<T> constr = clazz.getDeclaredConstructor();
-			boolean accessible = constr.isAccessible();
 			constr.setAccessible(true);
 
-			T obj = constr.newInstance();
-
-			constr.setAccessible(accessible);
-			return obj;
+			return constr.newInstance();
 		} catch (Exception e) {
 			throw U.rte(e);
 		}
@@ -845,18 +839,13 @@ public class Cls extends RapidoidThing {
 	public static <T> T newInstance(Class<T> clazz, Object... args) {
 		for (Constructor<?> constr : clazz.getConstructors()) {
 			Class<?>[] paramTypes = constr.getParameterTypes();
-			if (areAssignable(paramTypes, args)) {
-				try {
-					boolean accessible = constr.isAccessible();
-					constr.setAccessible(true);
+			if (areAssignable(paramTypes, args)) try {
 
-					T obj = (T) constr.newInstance(args);
+				constr.setAccessible(true);
 
-					constr.setAccessible(accessible);
-					return obj;
-				} catch (Exception e) {
-					throw U.rte(e);
-				}
+				return (T) constr.newInstance(args);
+			} catch (Exception e) {
+				throw U.rte(e);
 			}
 		}
 
@@ -1258,6 +1247,12 @@ public class Cls extends RapidoidThing {
 
 	public static boolean isAnnotated(Class<?> type, Class<? extends Annotation> annotation) {
 		return type.getAnnotation(annotation) != null;
+	}
+
+	public static Object invokeStatic(String className, String methodName, Object... args) {
+		Class<?> cls = Cls.get(className);
+		Method method = findMethodByArgs(cls, methodName, args);
+		return invokeStatic(method, args);
 	}
 
 }

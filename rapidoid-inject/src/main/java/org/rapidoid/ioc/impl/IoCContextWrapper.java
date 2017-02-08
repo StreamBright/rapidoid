@@ -9,12 +9,13 @@ import org.rapidoid.lambda.Mapper;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /*
  * #%L
  * rapidoid-inject
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -201,6 +202,32 @@ public class IoCContextWrapper extends RapidoidThing implements IoCContext {
 
 		try {
 			context.beanProvider(beanProvider);
+		} catch (RuntimeException e) {
+			context.rollback(backup);
+			throw e;
+		}
+	}
+
+	@Override
+	public synchronized Set<Object> getManagedInstances() {
+		IoCState backup = context.backup();
+
+		try {
+			return context.getManagedInstances();
+
+		} catch (RuntimeException e) {
+			context.rollback(backup);
+			throw e;
+		}
+	}
+
+	@Override
+	public synchronized Set<Class<?>> getManagedClasses() {
+		IoCState backup = context.backup();
+
+		try {
+			return context.getManagedClasses();
+
 		} catch (RuntimeException e) {
 			context.rollback(backup);
 			throw e;

@@ -34,7 +34,7 @@ import java.util.regex.Pattern;
  * #%L
  * rapidoid-http-fast
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -197,7 +197,7 @@ public class HttpRoutesImpl extends RapidoidThing implements HttpRoutes {
 		boolean isPattern = isPattern(path);
 		PathPattern pathPattern = isPattern ? PathPattern.from(path) : null;
 
-		routes.remove(new RouteImpl(verb, path, null, null));
+		routes.remove(RouteImpl.matching(verb, path));
 
 		switch (verb) {
 			case GET:
@@ -393,8 +393,10 @@ public class HttpRoutesImpl extends RapidoidThing implements HttpRoutes {
 			Map<String, String> params = pattern.match(path);
 
 			if (params != null) {
-				RouteImpl route = new RouteImpl(verb, path, null, null);
-				return new HandlerMatchWithParams(e.getValue(), params, route);
+				HttpHandler handler = e.getValue();
+				Route route = handler.getRoute();
+
+				return new HandlerMatchWithParams(handler, params, route);
 			}
 		}
 
@@ -444,7 +446,7 @@ public class HttpRoutesImpl extends RapidoidThing implements HttpRoutes {
 			String tx = txm != TransactionMode.NONE ? AnsiColor.bold(txm.name()) : txm.name();
 
 			Log.info("Registering handler", "!setup", this.customization.name(), "!verbs", verbs, "!path", path,
-				"!roles", opts.roles(), "tx", tx, "mvc", opts.mvc());
+				"!roles", opts.roles(), "tx", tx, "mvc", opts.mvc(), "cacheTTL", opts.cacheTTL());
 		} else {
 			Log.info("Deregistering handler", "setup", this.customization.name(), "!verbs", verbs, "!path", path);
 		}

@@ -4,7 +4,7 @@ package org.rapidoid.commons;
  * #%L
  * rapidoid-commons
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import org.junit.Test;
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
 import org.rapidoid.test.AbstractCommonsTest;
+import org.rapidoid.u.U;
 
 @Authors("Nikolche Mihajlovski")
 @Since("5.1.0")
@@ -113,4 +114,8 @@ public class StrTest extends AbstractCommonsTest {
 		eq(Str.wildcardsToRegex("a", "b", "c"), "(?:\\Qa\\E|\\Qb\\E|\\Qc\\E)");
 	}
 
+	@Test
+	public void testMapRendering() {
+		eq(Str.render(U.map("xx", 1, "yy", "ABC"), "value [${key}] is ${value}", "::"), "value [xx] is 1::value [yy] is ABC");
+	}
 }

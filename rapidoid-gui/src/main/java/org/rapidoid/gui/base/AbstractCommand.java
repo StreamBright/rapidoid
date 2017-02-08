@@ -13,7 +13,7 @@ import java.util.Arrays;
  * #%L
  * rapidoid-gui
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -68,13 +68,13 @@ public abstract class AbstractCommand<W extends AbstractCommand<?>> extends Abst
 			IReqInfo req = ReqInfo.get();
 
 			if (!req.isGetReq()) {
-				String event = (String) req.posted().get("_cmd");
+				String event = GUI.getCommand();
 
 				if (U.notEmpty(event) && U.eq(event, command)) {
 					Object[] args = new Object[cmdArgs.length];
 
 					for (int i = 0; i < args.length; i++) {
-						args[i] = U.or(req.posted().get("_" + i), "");
+						args[i] = U.or(req.data().get("_" + i), "");
 					}
 
 					return Arrays.equals(args, cmdArgs);

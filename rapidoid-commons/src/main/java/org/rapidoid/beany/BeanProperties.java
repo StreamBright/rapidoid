@@ -19,7 +19,7 @@ import java.util.concurrent.ConcurrentMap;
  * #%L
  * rapidoid-commons
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -68,6 +68,10 @@ public class BeanProperties extends RapidoidThing implements Iterable<Prop> {
 					if (prop == null) {
 						if (JSProp.is(propName)) {
 							prop = new JSProp(propName);
+
+						} else if (ActionsProp.is(propName)) {
+							prop = new ActionsProp();
+
 						} else {
 							throw U.rte("Cannot find property '%s'!", propName);
 						}
@@ -132,7 +136,7 @@ public class BeanProperties extends RapidoidThing implements Iterable<Prop> {
 	}
 
 	public static BeanProperties from(List<Prop> properties) {
-		Map<String, Prop> map = new LinkedHashMap<String, Prop>();
+		Map<String, Prop> map = Coll.synchronizedMap();
 
 		for (Prop prop : properties) {
 			map.put(prop.getName(), prop);
@@ -142,7 +146,7 @@ public class BeanProperties extends RapidoidThing implements Iterable<Prop> {
 	}
 
 	public static BeanProperties from(Map<String, ?> map) {
-		Map<String, Prop> properties = new LinkedHashMap<String, Prop>();
+		Map<String, Prop> properties = Coll.synchronizedMap();
 
 		for (Entry<?, ?> e : map.entrySet()) {
 			Object key = e.getKey();

@@ -4,7 +4,7 @@ package org.rapidoid.http;
  * #%L
  * rapidoid-http-fast
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,8 +28,9 @@ import org.rapidoid.bytes.BytesUtil;
 import org.rapidoid.commons.Dates;
 import org.rapidoid.data.BufRange;
 import org.rapidoid.data.JSON;
-import org.rapidoid.http.impl.HttpIO;
+import org.rapidoid.http.impl.lowlevel.HttpIO;
 import org.rapidoid.http.impl.HttpParser;
+import org.rapidoid.http.impl.MaybeReq;
 import org.rapidoid.net.Protocol;
 import org.rapidoid.net.Server;
 import org.rapidoid.net.TCP;
@@ -158,23 +159,23 @@ public abstract class AbstractHttpServer extends RapidoidThing implements Protoc
 
 	protected void writeBody(Channel ctx, byte[] body, MediaType contentType) {
 		writeContentTypeHeader(ctx, contentType);
-		HttpIO.writeContentLengthHeader(ctx, body.length);
+		HttpIO.INSTANCE.writeContentLengthHeader(ctx, body.length);
 
 		ctx.write(CR_LF);
 
 		ctx.write(body);
 	}
 
-	protected void writeJsonBody(Channel ctx, Object value) {
+	protected void writeJsonBody(MaybeReq req, Channel ctx, Object value) {
 		writeContentTypeHeader(ctx, MediaType.JSON);
 		ByteArrayOutputStream os = Msc.locals().jsonRenderingStream();
 		JSON.stringify(value, os);
-		HttpIO.writeContentLengthAndBody(ctx, os);
+		HttpIO.INSTANCE.writeContentLengthAndBody(req, ctx, os);
 	}
 
-	protected HttpStatus serializeToJson(Channel ctx, boolean isKeepAlive, Object value) {
+	protected HttpStatus serializeToJson(MaybeReq req, Channel ctx, boolean isKeepAlive, Object value) {
 		startResponse(ctx, isKeepAlive);
-		writeJsonBody(ctx, value);
+		writeJsonBody(req, ctx, value);
 		return HttpStatus.DONE;
 	}
 

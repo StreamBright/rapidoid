@@ -4,7 +4,7 @@ package org.rapidoid.gui;
  * #%L
  * rapidoid-gui
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,12 +25,13 @@ import org.rapidoid.annotation.Since;
 import org.rapidoid.beany.Beany;
 import org.rapidoid.cls.Cls;
 import org.rapidoid.commons.AnyObj;
+import org.rapidoid.commons.Dates;
 import org.rapidoid.commons.English;
 import org.rapidoid.commons.Str;
 import org.rapidoid.gui.input.*;
 import org.rapidoid.gui.reqinfo.IReqInfo;
 import org.rapidoid.gui.reqinfo.ReqInfo;
-import org.rapidoid.gui.var.LocalVar;
+import org.rapidoid.gui.var.ReqDataVar;
 import org.rapidoid.html.HTML;
 import org.rapidoid.html.Tag;
 import org.rapidoid.html.TagWidget;
@@ -51,10 +52,7 @@ import org.rapidoid.util.Msc;
 import org.rapidoid.var.Var;
 
 import java.io.Serializable;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.NavigableMap;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Authors("Nikolche Mihajlovski")
@@ -64,6 +62,10 @@ public abstract class GUI extends HTML implements Role {
 	public static final Tag NOTHING = span(fa("ban"), " N/A").class_("nothing");
 
 	public static final Tag N_A = NOTHING;
+
+	public static final Tag TRUE = fa("check-square-o");
+
+	public static final Tag FALSE = fa("square-o");
 
 	public static final Btn SAVE = cmd("^Save");
 
@@ -353,6 +355,7 @@ public abstract class GUI extends HTML implements Role {
 	}
 
 	public static Btn cmd(String cmd, Object... args) {
+
 		boolean primary = cmd.startsWith("^");
 		boolean danger = cmd.startsWith("!");
 		boolean warning = cmd.startsWith("?");
@@ -365,14 +368,20 @@ public abstract class GUI extends HTML implements Role {
 
 		Btn btn = btn(caption);
 		if (primary) {
-			btn = btn.primary();
+			btn.primary();
 		} else if (danger) {
-			btn = btn.danger();
+			btn.danger();
 		} else if (warning) {
-			btn = btn.warning();
+			btn.warning();
 		}
 
-		return btn.command(cmd, args);
+		btn.command(cmd, args);
+
+		if (danger || warning) {
+			btn.confirm(U.frmt("Please confirm that you want to execute '%s'", cmd));
+		}
+
+		return btn;
 	}
 
 	public static Btn navigate(String cmd) {
@@ -499,12 +508,26 @@ public abstract class GUI extends HTML implements Role {
 		return items;
 	}
 
-	public static <T extends Serializable> Var<T> var(String name, T defaultValue) {
-		return new LocalVar<T>(name, defaultValue);
+	public static <T extends Serializable> Var<T> var(String name, Class<T> type, T defaultValue) {
+		return new ReqDataVar<>(name, type, defaultValue);
 	}
 
-	public static <T extends Serializable> Var<T> var(String name) {
-		return var(name, null);
+	public static <T extends Serializable> Var<T> var(String name, T defaultValue) {
+		return var(name, Cls.of(defaultValue), defaultValue);
+	}
+
+	public static Var<String> var(String name) {
+		return var(name, String.class, null);
+	}
+
+	public static Var<List<String>> listVar(String name) {
+		Class<List<String>> type = U.cast(List.class);
+		return new ReqDataVar<>(name, type, U.<String>list());
+	}
+
+	public static Var<List<String>> listVar(String name, List<String> defaultValue) {
+		Class<List<String>> type = U.cast(List.class);
+		return new ReqDataVar<>(name, type, defaultValue);
 	}
 
 	public static Object highlight(String text) {
@@ -573,7 +596,16 @@ public abstract class GUI extends HTML implements Role {
 
 		if (item == null) return N_A;
 
-		if (item instanceof Var<?>) {
+		if (item instanceof Date) {
+			Date date = (Date) item;
+			Tag dateSpan = span(Dates.readable(date));
+			return tooltip(dateSpan, Dates.details(date));
+
+		} else if (item instanceof Boolean) {
+			boolean b = (Boolean) item;
+			return b ? TRUE : FALSE;
+
+		} else if (item instanceof Var<?>) {
 			Var<?> var = (Var<?>) item;
 			return display(var.get());
 
@@ -732,6 +764,11 @@ public abstract class GUI extends HTML implements Role {
 		return !req.isGetReq() ? (String) req.posted().get("_cmd") : null;
 	}
 
+	public static boolean isEvent() {
+		IReqInfo req = req();
+		return U.eq(req.params().get("__event__"), "true");
+	}
+
 	public static Tag verb(HttpVerb verb) {
 		Tag tag = span(verb);
 		switch (verb) {
@@ -877,6 +914,14 @@ public abstract class GUI extends HTML implements Role {
 
 	public static MultiWidget multi(Object... elements) {
 		return new MultiWidget(elements);
+	}
+
+	public static void redirect(String uri) {
+		req().setHeader("X-Rapidoid-Redirect", uri);
+	}
+
+	public static Tag tooltip(Tag target, String tooltip) {
+		return target.data("toggle", "tooltip").data("placement", "top").attr("title", tooltip);
 	}
 
 }

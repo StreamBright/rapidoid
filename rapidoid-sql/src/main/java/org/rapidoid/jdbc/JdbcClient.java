@@ -14,7 +14,7 @@ import java.util.Map;
  * #%L
  * rapidoid-sql
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,42 +34,71 @@ import java.util.Map;
 @Since("3.0.0")
 public class JdbcClient extends RapidoidThing {
 
-	private boolean initialized;
+	private volatile boolean initialized;
 
-	private String username;
-	private String password;
-	private String driver;
-	private String url;
+	private volatile String username;
+	private volatile String password;
+	private volatile String driver;
+	private volatile String url;
 
-	private volatile ConnectionPool pool = new NoConnectionPool();
+	private volatile boolean usePool = true;
+	private volatile ConnectionPool pool;
 
 	public synchronized JdbcClient username(String username) {
-		this.username = username;
-		this.initialized = false;
+		if (U.neq(this.username, username)) {
+			this.username = username;
+			this.initialized = false;
+		}
 		return this;
 	}
 
 	public synchronized JdbcClient password(String password) {
-		this.password = password;
-		this.initialized = false;
+		if (U.neq(this.password, password)) {
+			this.password = password;
+			this.initialized = false;
+		}
 		return this;
 	}
 
 	public synchronized JdbcClient driver(String driver) {
-		this.driver = driver;
-		this.initialized = false;
+		if (U.neq(this.driver, driver)) {
+			this.driver = driver;
+			this.initialized = false;
+		}
 		return this;
 	}
 
-	public synchronized JdbcClient pool(ConnectionPool connectionPool) {
-		this.pool = connectionPool;
-		this.initialized = false;
+	public synchronized JdbcClient pool(ConnectionPool pool) {
+		if (U.neq(this.pool, pool)) {
+			this.pool = pool;
+			this.usePool = pool != null;
+			this.initialized = false;
+		}
 		return this;
 	}
 
 	public synchronized JdbcClient url(String url) {
-		this.url = url;
-		this.initialized = false;
+		if (U.neq(this.url, url)) {
+			this.url = url;
+			this.initialized = false;
+		}
+		return this;
+	}
+
+	public synchronized JdbcClient usePool(boolean usePool) {
+		if (U.neq(this.usePool, usePool)) {
+			this.usePool = usePool;
+			this.initialized = false;
+		}
+		return this;
+	}
+
+	/**
+	 * Use <code>usePool(true)</code> instead.
+	 */
+	@Deprecated
+	public JdbcClient pooled() {
+		usePool(true);
 		return this;
 	}
 
@@ -112,6 +141,10 @@ public class JdbcClient extends RapidoidThing {
 
 			String maskedPassword = U.isEmpty(password) ? "<empty>" : "<specified>";
 			Log.info("Initialized JDBC API", "!url", url, "!driver", driver, "!username", username, "!password", maskedPassword);
+
+			if (pool == null) {
+				pool = usePool ? new C3P0ConnectionPool(this) : new NoConnectionPool();
+			}
 
 			initialized = true;
 		}
@@ -157,17 +190,28 @@ public class JdbcClient extends RapidoidThing {
 		}
 	}
 
-	public void execute(String sql, Object... args) {
+	public int execute(String sql, Object... args) {
 		ensureIsInitialized();
 
-		Log.info("SQL", "sql", sql, "args", args);
+		Log.debug("SQL", "sql", sql, "args", args);
 
 		Connection conn = provideConnection();
 		PreparedStatement stmt = null;
 
 		try {
 			stmt = JDBC.prepare(conn, sql, args);
-			stmt.execute();
+
+			String q = sql.trim().toUpperCase();
+
+			if (q.startsWith("INSERT ")
+				|| q.startsWith("UPDATE ")
+				|| q.startsWith("DELETE ")) {
+
+				return stmt.executeUpdate();
+
+			} else {
+				return stmt.execute() ? 1 : 0;
+			}
 
 		} catch (SQLException e) {
 			throw U.rte(e);
@@ -273,11 +317,12 @@ public class JdbcClient extends RapidoidThing {
 		return pool;
 	}
 
-	public JdbcClient pooled() {
-		ensureIsInitialized();
-
-		this.pool = new C3P0ConnectionPool(this);
-		return this;
+	public boolean usePool() {
+		return usePool;
 	}
 
+	public JdbcClient init() {
+		ensureIsInitialized();
+		return this;
+	}
 }

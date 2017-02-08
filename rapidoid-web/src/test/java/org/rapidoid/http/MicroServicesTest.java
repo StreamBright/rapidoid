@@ -4,7 +4,7 @@ package org.rapidoid.http;
  * #%L
  * rapidoid-web
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import org.rapidoid.concurrent.Callback;
 import org.rapidoid.setup.On;
 import org.rapidoid.u.U;
 import org.rapidoid.util.Msc;
+import org.rapidoid.util.Wait;
 
 import java.util.concurrent.CountDownLatch;
 
@@ -45,8 +46,8 @@ public class MicroServicesTest extends HttpTestCommons {
 		});
 
 		// a blocking call
-		eq(REST.get("http://localhost:8888/?n=7", Integer.class).intValue(), 8);
-		eq(REST.post("http://localhost:8888/?n=7", Integer.class).intValue(), 8);
+		eq(REST.get("http://localhost:8080/?n=7", Integer.class).intValue(), 8);
+		eq(REST.post("http://localhost:8080/?n=7", Integer.class).intValue(), 8);
 
 		int count = 1000;
 		final CountDownLatch latch = new CountDownLatch(count);
@@ -76,13 +77,14 @@ public class MicroServicesTest extends HttpTestCommons {
 			};
 
 			if (i % 2 == 0) {
-				REST.get("http://localhost:8888/?n=" + i, Integer.class, callback);
+				REST.get("http://localhost:8080/?n=" + i, Integer.class, callback);
 			} else {
-				REST.post("http://localhost:8888/?n=" + i, Integer.class, callback);
+				REST.post("http://localhost:8080/?n=" + i, Integer.class, callback);
 			}
 		}
 
-		Msc.wait(latch);
+		Wait.on(latch);
+
 		Msc.endMeasure(count, "calls");
 
 		loop.interrupt();

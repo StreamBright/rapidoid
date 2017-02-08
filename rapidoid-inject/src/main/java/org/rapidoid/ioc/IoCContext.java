@@ -7,12 +7,13 @@ import org.rapidoid.lambda.Mapper;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /*
  * #%L
  * rapidoid-inject
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,4 +62,9 @@ public interface IoCContext {
 	Map<String, Object> info();
 
 	void beanProvider(BeanProvider beanProvider);
+
+	Set<Object> getManagedInstances();
+
+	Set<Class<?>> getManagedClasses();
+
 }

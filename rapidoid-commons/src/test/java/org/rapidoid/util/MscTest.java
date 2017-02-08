@@ -4,7 +4,7 @@ package org.rapidoid.util;
  * #%L
  * rapidoid-commons
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import org.rapidoid.annotation.Since;
 import org.rapidoid.test.TestCommons;
 
 import java.io.File;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 
 @Authors("Nikolche Mihajlovski")
@@ -91,4 +92,10 @@ public class MscTest extends TestCommons {
 		isFalse(Msc.dockerized());
 	}
 
+	@Test
+	public void testUuidBytes() {
+		UUID uuid = UUID.randomUUID();
+		UUID uuid2 = Msc.bytesToUUID(Msc.uuidToBytes(uuid));
+		eq(uuid2, uuid);
+	}
 }

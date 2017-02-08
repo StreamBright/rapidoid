@@ -12,7 +12,7 @@ import java.util.Map;
  * #%L
  * rapidoid-commons
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,6 +31,16 @@ import java.util.Map;
 @Authors("Nikolche Mihajlovski")
 @Since("5.0.4")
 public class JS extends RapidoidThing {
+
+	public static boolean compiles(String js) {
+		try {
+			JS.compile(js);
+			return true;
+
+		} catch (ScriptException e) {
+			return false;
+		}
+	}
 
 	public static <T> T eval(String js) throws ScriptException {
 		return eval(js, null);

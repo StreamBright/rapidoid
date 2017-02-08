@@ -4,7 +4,7 @@ package org.rapidoid.http.handler;
  * #%L
  * rapidoid-http-fast
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ import org.rapidoid.http.MediaType;
 import org.rapidoid.http.Req;
 import org.rapidoid.http.customize.Customization;
 import org.rapidoid.http.customize.StaticFilesSecurity;
-import org.rapidoid.http.impl.HttpIO;
+import org.rapidoid.http.impl.lowlevel.HttpIO;
 import org.rapidoid.http.impl.RouteOptions;
 import org.rapidoid.io.Res;
 import org.rapidoid.log.LogLevel;
@@ -65,7 +65,7 @@ public class StaticResourcesHandler extends AbstractHttpHandler {
 
 						if (bytes != null) {
 							MediaType contentType = U.or(MediaType.getByFileName(res.getName()), MediaType.BINARY);
-							HttpIO.write200(ctx, isKeepAlive, contentType, bytes);
+							HttpIO.INSTANCE.write200(HttpUtils.maybe(req), ctx, isKeepAlive, contentType, bytes);
 							return HttpStatus.DONE;
 						}
 					}
@@ -75,7 +75,7 @@ public class StaticResourcesHandler extends AbstractHttpHandler {
 			return HttpStatus.NOT_FOUND;
 
 		} catch (Exception e) {
-			return HttpIO.errorAndDone(req, e, LogLevel.ERROR);
+			return HttpIO.INSTANCE.errorAndDone(req, e, LogLevel.ERROR);
 		}
 	}
 

@@ -4,7 +4,7 @@ package org.rapidoid.sql.test;
  * #%L
  * rapidoid-sql
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@ public class JDBCTest extends SQLTestCommons {
 
 	@Test
 	public void testWithMySQL() {
-		JDBC.mysql("non-existing.non-existing--host", 12345, "testdb");
+		JDBC.mysql("non-existing.non-existing--host", 12345, "testdb").usePool(false);
 
 		// only testing if the driver is properly loaded and trying to connect
 		try {
@@ -47,6 +47,8 @@ public class JDBCTest extends SQLTestCommons {
 		} catch (Exception e) {
 			eq(e.getCause().getClass(), CommunicationsException.class);
 		}
+
+		isFalse(JDBC.defaultApi().usePool());
 	}
 
 	@Test
@@ -65,6 +67,7 @@ public class JDBCTest extends SQLTestCommons {
 	public void testWithHSQLDB() {
 		JDBC.hsql("test");
 		insertAndCheckData(JDBC.defaultApi());
+		isTrue(JDBC.defaultApi().usePool());
 	}
 
 	@Test

@@ -4,7 +4,7 @@ package org.rapidoid.io;
  * #%L
  * rapidoid-commons
  * %%
- * Copyright (C) 2014 - 2016 Nikolche Mihajlovski and contributors
+ * Copyright (C) 2014 - 2017 Nikolche Mihajlovski and contributors
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import org.rapidoid.RapidoidThing;
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
 import org.rapidoid.commons.Str;
+import org.rapidoid.log.Log;
 import org.rapidoid.u.U;
 
 import java.io.File;
@@ -100,6 +101,16 @@ public class FileSearch extends RapidoidThing {
 		return names;
 	}
 
+	public List<String> getLocations() {
+		List<String> names = U.list();
+
+		for (File file : get()) {
+			names.add(file.getParent());
+		}
+
+		return names;
+	}
+
 	public List<String> getRelativeNames() {
 		List<String> names = U.list();
 
@@ -158,10 +169,12 @@ public class FileSearch extends RapidoidThing {
 
 				if ((includeFiles && f.isFile()) || (includeDirectories && f.isDirectory())) {
 
-					String filename = f.getAbsolutePath();
+					String filename = f.getName();
+					Log.debug("Matching file/folder against the search criteria", "name", f.getAbsoluteFile());
 
 					if (matching == null || matching.matcher(filename).matches()) {
 						if (ignoring == null || !ignoring.matcher(filename).matches()) {
+							Log.debug("The file/folder matches", "name", f.getAbsoluteFile());
 							found.add(f);
 						}
 					}
