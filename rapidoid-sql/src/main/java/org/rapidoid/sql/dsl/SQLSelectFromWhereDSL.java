@@ -22,6 +22,7 @@ package org.rapidoid.sql.dsl;
 
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
+import org.rapidoid.datamodel.Results;
 import org.rapidoid.jdbc.JdbcClient;
 import org.rapidoid.u.U;
 
@@ -51,7 +52,7 @@ public class SQLSelectFromWhereDSL extends AbstractSQLDSL {
 	}
 
 	public List<Map<String, Object>> asList() {
-		return client.query(generateSql(), args);
+		return client.query(generateSql(), args).all();
 	}
 
 	public SQLSelectFromWhereDSL and(String criteria, Object... args) {
@@ -59,7 +60,7 @@ public class SQLSelectFromWhereDSL extends AbstractSQLDSL {
 		return this;
 	}
 
-	public <T> List<T> as(Class<T> resultType) {
+	public <T> Results<T> as(Class<T> resultType) {
 		return client.query(resultType, generateSql(), args);
 	}
 

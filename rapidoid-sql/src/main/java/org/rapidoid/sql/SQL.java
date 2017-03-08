@@ -4,6 +4,7 @@ import org.rapidoid.RapidoidThing;
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
 import org.rapidoid.commons.Str;
+import org.rapidoid.datamodel.Results;
 import org.rapidoid.jdbc.JDBC;
 import org.rapidoid.jdbc.JdbcClient;
 import org.rapidoid.sql.dsl.*;
@@ -127,11 +128,11 @@ public class SQL extends RapidoidThing {
 		jdbc().tryToExecute(sql, args);
 	}
 
-	public static <T> List<T> query(Class<T> resultType, String sql, Object... args) {
+	public static <T> Results<T> query(Class<T> resultType, String sql, Object... args) {
 		return jdbc().query(resultType, sql, args);
 	}
 
-	public static List<Map<String, Object>> query(String sql, Object... args) {
+	public static Results<Map<String, Object>> query(String sql, Object... args) {
 		return jdbc().query(sql, args);
 	}
 
