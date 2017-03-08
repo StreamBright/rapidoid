@@ -20,15 +20,11 @@ package org.rapidoid.api;
  * #L%
  */
 
+import org.rapidoid.RapidoidThing;
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
 
 @Authors("Nikolche Mihajlovski")
 @Since("6.0.0")
-public interface API {
-
-	void reconfigure(APIConfig configuration);
-
-	void close();
-
+public abstract class RapidoidAPIImpl extends RapidoidThing implements RapidoidAPI {
 }
