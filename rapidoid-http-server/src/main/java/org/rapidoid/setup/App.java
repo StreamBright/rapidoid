@@ -20,6 +20,8 @@ package org.rapidoid.setup;
  * #L%
  */
 
+import org.rapidoid.RapidoidModule;
+import org.rapidoid.RapidoidModules;
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
 import org.rapidoid.beany.Beany;
@@ -35,12 +37,12 @@ import org.rapidoid.ioc.IoC;
 import org.rapidoid.ioc.IoCContext;
 import org.rapidoid.log.Log;
 import org.rapidoid.render.Templates;
-import org.rapidoid.reverseproxy.Reverse;
 import org.rapidoid.scan.ClasspathScanner;
 import org.rapidoid.scan.ClasspathUtil;
 import org.rapidoid.scan.Scan;
 import org.rapidoid.u.U;
 import org.rapidoid.util.Msc;
+import org.rapidoid.util.MscOpts;
 
 import java.util.List;
 import java.util.Set;
@@ -56,6 +58,8 @@ public class App extends RapidoidInitializer {
 	private static volatile boolean dirty;
 	private static volatile boolean restarted;
 	private static volatile boolean managed;
+
+	private static volatile AppBootstrap boot;
 
 	private static final Set<Class<?>> invoked = Coll.synchronizedSet();
 
@@ -80,17 +84,19 @@ public class App extends RapidoidInitializer {
 		return boot();
 	}
 
-	public static AppBootstrap boot() {
-		registerConfigListeners();
+	public synchronized static AppBootstrap boot() {
+		if (boot == null) {
 
-		AppBootstrap bootstrap = new AppBootstrap();
-		bootstrap.services();
-		return bootstrap;
-	}
+			boot = new AppBootstrap();
 
-	public static void registerConfigListeners() {
-		Conf.PROXY.addChangeListener(new ProxyConfigListener());
-		Conf.API.addChangeListener(new APIConfigListener());
+			for (RapidoidModule module : RapidoidModules.getAll()) {
+				module.boot();
+			}
+
+			boot.services();
+		}
+
+		return boot;
 	}
 
 	public static void profiles(String... profiles) {
@@ -130,7 +136,7 @@ public class App extends RapidoidInitializer {
 	}
 
 	private static synchronized void restartApp() {
-		if (!Msc.hasRapidoidWatch()) {
+		if (!MscOpts.hasRapidoidWatch()) {
 			Log.warn("Cannot reload/restart the application, module rapidoid-watch is missing!");
 		}
 
@@ -153,6 +159,7 @@ public class App extends RapidoidInitializer {
 		}
 
 		App.path = null;
+		App.boot = null;
 
 		Conf.reset();
 		Env.reset();
@@ -173,7 +180,7 @@ public class App extends RapidoidInitializer {
 		Setup.initDefaults(); // this changes the config
 		Conf.reset(); // reset the config again
 
-		if (Msc.hasRapidoidJPA()) {
+		if (MscOpts.hasRapidoidJPA()) {
 			loader = ReloadUtil.reloader();
 			ClasspathUtil.setDefaultClassLoader(loader);
 		}
@@ -207,10 +214,10 @@ public class App extends RapidoidInitializer {
 		dirty = false;
 		path = null;
 		loader = App.class.getClassLoader();
+		boot = null;
 		Setup.initDefaults();
 		AppBootstrap.reset();
 		invoked.clear();
-		Reverse.reset();
 	}
 
 	public static void notifyChanges() {
@@ -220,15 +227,18 @@ public class App extends RapidoidInitializer {
 		}
 	}
 
-	static void restartIfDirty() {
-		if (dirty) {
+	static boolean restartIfDirty() {
+		if (dirty && mainClassName != null) {
 			synchronized (Setup.class) {
-				if (dirty) {
+				if (dirty && mainClassName != null) {
 					restartApp();
 					dirty = false;
+					return true;
 				}
 			}
 		}
+
+		return false;
 	}
 
 	public static List<Class<?>> findBeans(String... packages) {
@@ -252,7 +262,7 @@ public class App extends RapidoidInitializer {
 	}
 
 	public static void beans(Object... beans) {
-		Setup.ON.beans(beans);
+		Setup.on().beans(beans);
 	}
 
 	public static IoCContext context() {
@@ -277,7 +287,7 @@ public class App extends RapidoidInitializer {
 	}
 
 	public static void register(Beans beans) {
-		Setup.ON.register(beans);
+		Setup.on().register(beans);
 	}
 
 	public static void shutdown() {

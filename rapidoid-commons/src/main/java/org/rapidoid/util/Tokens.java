@@ -42,18 +42,18 @@ public class Tokens extends RapidoidThing {
 	public static final String _SCOPE = "_scope";
 	public static final String _EXPIRES = "_expires";
 
-	public static String serialize(Map<String, Serializable> token) {
+	public static String serialize(Map<String, ? extends Serializable> token) {
 		if (U.notEmpty(token)) {
 			byte[] tokenBytes = serializeToken(token);
 			byte[] tokenEncrypted = Crypto.encrypt(tokenBytes);
-			return Str.toBase64(tokenEncrypted).replace('+', '$').replace('/', '_');
+			return Str.toBase64(tokenEncrypted, '$', '_');
 
 		} else {
 			return "";
 		}
 	}
 
-	private static byte[] serializeToken(Map<String, Serializable> token) {
+	private static byte[] serializeToken(Map<String, ? extends Serializable> token) {
 		byte[] dest = new byte[2500];
 
 		try {
@@ -70,7 +70,7 @@ public class Tokens extends RapidoidThing {
 	@SuppressWarnings("unchecked")
 	public static Map<String, Serializable> deserialize(String token) {
 		if (!U.isEmpty(token)) {
-			byte[] decoded = Str.fromBase64(token.replace('$', '+').replace('_', '/'));
+			byte[] decoded = Str.fromBase64(token, '$', '_');
 			byte[] tokenDecrypted = Crypto.decrypt(decoded);
 			return tokenDecrypted != null ? (Map<String, Serializable>) Serialize.deserialize(tokenDecrypted) : null;
 		} else {
@@ -78,7 +78,7 @@ public class Tokens extends RapidoidThing {
 		}
 	}
 
-	public static TokenAuthData getAuth(Map<String, Serializable> token) {
+	public static TokenAuthData getAuth(Map<String, ? extends Serializable> token) {
 		TokenAuthData data = new TokenAuthData();
 
 		data.user = (String) token.get(_USER);

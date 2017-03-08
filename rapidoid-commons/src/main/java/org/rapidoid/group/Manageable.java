@@ -31,8 +31,13 @@ public interface Manageable {
 
 	String id();
 
-	List<String> actions();
+	GroupOf<? extends Manageable> group();
 
-	Object execute(String action);
+	List<String> getManageableActions();
 
+	List<String> getManageableProperties();
+
+	Object runManageableAction(String action);
+
+	String getManageableType();
 }

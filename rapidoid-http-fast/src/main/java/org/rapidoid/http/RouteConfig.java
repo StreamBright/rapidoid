@@ -43,9 +43,9 @@ public interface RouteConfig {
 
 	RouteOptions mvc(boolean mvc);
 
-	TransactionMode transactionMode();
+	TransactionMode transaction();
 
-	RouteOptions transactionMode(TransactionMode transactionMode);
+	RouteOptions transaction(TransactionMode transactionMode);
 
 	Set<String> roles();
 
@@ -66,4 +66,8 @@ public interface RouteConfig {
 	long cacheTTL();
 
 	RouteOptions cacheTTL(long cacheTTL);
+
+	int cacheCapacity();
+
+	RouteOptions cacheCapacity(int cacheCapacity);
 }

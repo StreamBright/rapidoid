@@ -56,6 +56,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class ReqImpl extends RapidoidThing implements Req, Constants, HttpMetadata, IRequest, MaybeReq {
 
 	public static final long UNDEFINED = Long.MAX_VALUE;
+
 	private final FastHttp http;
 
 	private final Channel channel;
@@ -128,7 +129,13 @@ public class ReqImpl extends RapidoidThing implements Req, Constants, HttpMetada
 
 	private final HTTPCacheKey cacheKey;
 
+	private volatile boolean cached;
+
+	private final long connId;
+
 	private final long handle;
+
+	private final long requestId;
 
 	public ReqImpl(FastHttp http, Channel channel, boolean isKeepAlive, String verb, String uri, String path,
 	               String query, byte[] body, Map<String, String> params, Map<String, String> headers,
@@ -154,7 +161,9 @@ public class ReqImpl extends RapidoidThing implements Req, Constants, HttpMetada
 		this.zone = zone;
 		this.routes = routes;
 		this.route = route;
+		this.connId = channel.connId();
 		this.handle = channel.handle();
+		this.requestId = channel.requestId();
 		this.custom = routes != null ? routes.custom() : http.custom();
 		this.cacheKey = createCacheKey();
 	}
@@ -269,12 +278,12 @@ public class ReqImpl extends RapidoidThing implements Req, Constants, HttpMetada
 
 	@Override
 	public long connectionId() {
-		return channel.connId();
+		return connId;
 	}
 
 	@Override
 	public long requestId() {
-		return channel.requestId();
+		return requestId;
 	}
 
 	@Override
@@ -449,7 +458,7 @@ public class ReqImpl extends RapidoidThing implements Req, Constants, HttpMetada
 	}
 
 	private void respond(int code, byte[] responseBody) {
-		MediaType contentType = MediaType.HTML_UTF_8;
+		MediaType contentType = HttpUtils.getDefaultContentType();
 
 		if (tokenChanged.get()) {
 			HttpUtils.saveTokenBeforeRenderingHeaders(this, token);
@@ -460,7 +469,7 @@ public class ReqImpl extends RapidoidThing implements Req, Constants, HttpMetada
 		}
 
 		if (response != null) {
-			contentType = U.or(response.contentType(), MediaType.HTML_UTF_8);
+			contentType = U.or(response.contentType(), contentType);
 		}
 
 		renderResponse(code, contentType, responseBody);
@@ -471,7 +480,7 @@ public class ReqImpl extends RapidoidThing implements Req, Constants, HttpMetada
 		completed = responseBody != null;
 
 		HttpIO.INSTANCE.respond(
-			HttpUtils.maybe(this), channel, handle,
+			HttpUtils.maybe(this), channel, connId, handle,
 			code, isKeepAlive, contentType, responseBody,
 			response != null ? response.headers() : null,
 			response != null ? response.cookies() : null
@@ -918,7 +927,7 @@ public class ReqImpl extends RapidoidThing implements Req, Constants, HttpMetada
 		proxyResp.code = response != null ? response.code() : 200;
 
 		if (proxyResp.contentType == null) {
-			proxyResp.contentType = response != null ? response.contentType() : U.or(defaultContentType, MediaType.HTML_UTF_8);
+			proxyResp.contentType = response != null ? response.contentType() : defaultContentType;
 		}
 
 		// don't cache the response if it contains cookies or token data
@@ -943,11 +952,20 @@ public class ReqImpl extends RapidoidThing implements Req, Constants, HttpMetada
 	}
 
 	private boolean willSaveToCache() {
-		return cacheKey != null;
+		return cacheKey != null && !cached;
 	}
 
 	public HTTPCacheKey cacheKey() {
 		return cacheKey;
+	}
+
+	public boolean cached() {
+		return cached;
+	}
+
+	public ReqImpl cached(boolean cached) {
+		this.cached = cached;
+		return this;
 	}
 
 	private boolean isCacheable() {

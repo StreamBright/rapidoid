@@ -44,11 +44,14 @@ import org.rapidoid.log.Log;
 import org.rapidoid.model.Item;
 import org.rapidoid.model.Models;
 import org.rapidoid.model.Property;
+import org.rapidoid.render.Render;
 import org.rapidoid.render.Templates;
 import org.rapidoid.security.Role;
 import org.rapidoid.timeseries.TimeSeries;
 import org.rapidoid.u.U;
 import org.rapidoid.util.Msc;
+import org.rapidoid.util.MscOpts;
+import org.rapidoid.util.TUUID;
 import org.rapidoid.var.Var;
 
 import java.io.Serializable;
@@ -605,6 +608,18 @@ public abstract class GUI extends HTML implements Role {
 			boolean b = (Boolean) item;
 			return b ? TRUE : FALSE;
 
+		} else if (item instanceof UUID) {
+			UUID uuid = (UUID) item;
+			return uuid.toString();
+
+		} else if (item instanceof TUUID) {
+			TUUID tuuid = (TUUID) item;
+			return tuuid.toString();
+
+		} else if (item instanceof byte[]) {
+			byte[] bytes = (byte[]) item;
+			return Str.toHex(bytes);
+
 		} else if (item instanceof Var<?>) {
 			Var<?> var = (Var<?>) item;
 			return display(var.get());
@@ -873,11 +888,11 @@ public abstract class GUI extends HTML implements Role {
 	}
 
 	private static boolean isEntity(Object item) {
-		return Msc.hasRapidoidJPA() && GuiJpaUtil.isEntity(item);
+		return MscOpts.hasRapidoidJPA() && GuiJpaUtil.isEntity(item);
 	}
 
 	private static Object getIdentifier(Object bean) {
-		return Msc.hasRapidoidJPA() ? GuiJpaUtil.getIdentifier(bean) : null;
+		return MscOpts.hasRapidoidJPA() ? GuiJpaUtil.getIdentifier(bean) : null;
 	}
 
 	public static String uri(String path, Map<String, String> query) {
@@ -922,6 +937,28 @@ public abstract class GUI extends HTML implements Role {
 
 	public static Tag tooltip(Tag target, String tooltip) {
 		return target.data("toggle", "tooltip").data("placement", "top").attr("title", tooltip);
+	}
+
+	public static Tag render(String templateFile) {
+		return render(templateFile, U.map());
+	}
+
+	public static Tag render(String templateFile, Map<Object, Object> model) {
+		return hardcoded(Render.file(templateFile).model(model));
+	}
+
+	public static Tag breadcrumb(Object... segments) {
+		Tag breadcrumb = ol().class_("breadcrumb");
+
+		for (Object segment : segments) {
+			breadcrumb = breadcrumb.append(li(a_void(segment)));
+		}
+
+		return breadcrumb;
+	}
+
+	public static Tag autoRefresh(long intervalMs) {
+		return script(U.frmt("Rapidoid.setAutoRefreshInterval(%s);", intervalMs));
 	}
 
 }

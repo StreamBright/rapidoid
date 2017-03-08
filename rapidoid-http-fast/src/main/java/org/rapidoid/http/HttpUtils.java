@@ -8,7 +8,6 @@ import org.rapidoid.bytes.BytesUtil;
 import org.rapidoid.commons.Str;
 import org.rapidoid.config.BasicConfig;
 import org.rapidoid.config.Conf;
-import org.rapidoid.config.Config;
 import org.rapidoid.ctx.Ctxs;
 import org.rapidoid.ctx.UserInfo;
 import org.rapidoid.data.BufRanges;
@@ -20,10 +19,7 @@ import org.rapidoid.http.impl.PathPattern;
 import org.rapidoid.io.Res;
 import org.rapidoid.lambda.Mapper;
 import org.rapidoid.u.U;
-import org.rapidoid.util.ErrCodeAndMsg;
-import org.rapidoid.util.Msc;
-import org.rapidoid.util.TokenAuthData;
-import org.rapidoid.util.Tokens;
+import org.rapidoid.util.*;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -55,6 +51,8 @@ import java.util.regex.Pattern;
 @Authors("Nikolche Mihajlovski")
 @Since("5.0.0")
 public class HttpUtils extends RapidoidThing implements HttpMetadata {
+
+	private static final MediaType DEFAULT_CONTENT_TYPE = MscOpts.hasRapidoidHTML() ? MediaType.HTML_UTF_8 : MediaType.JSON;
 
 	private static final String PAGE_RELOAD = "<h2>&nbsp;Reloading...</h2><script>location.reload();</script>";
 
@@ -137,7 +135,7 @@ public class HttpUtils extends RapidoidThing implements HttpMetadata {
 		resp.contentType(mediaType);
 	}
 
-	public static Res staticPage(Req req, String... possibleLocations) {
+	public static Res staticResource(Req req, String... possibleLocations) {
 		String resName = resName(req);
 
 		if (resName == null) return null;
@@ -258,14 +256,14 @@ public class HttpUtils extends RapidoidThing implements HttpMetadata {
 	}
 
 	public static BasicConfig zone(Customization custom, String zone) {
-		Config appConfig = custom.config().sub("app");
+		BasicConfig defaultConfig = custom.config().sub("gui").or(custom.config().sub("app"));
 
 		if (zone != null) {
 			String zoneKey = zone + "-zone";
-			return custom.config().sub(zoneKey).or(appConfig);
+			return custom.config().sub(zoneKey).or(defaultConfig);
 
 		} else {
-			return appConfig;
+			return defaultConfig;
 		}
 	}
 
@@ -383,6 +381,14 @@ public class HttpUtils extends RapidoidThing implements HttpMetadata {
 				resp.headers.put(name, value);
 			}
 		}
+	}
+
+	public static MediaType getDefaultContentType() {
+		return DEFAULT_CONTENT_TYPE;
+	}
+
+	public static void validateViewName(String view) {
+		U.must(!view.startsWith("/"), "Invalid view name: '%s'", view);
 	}
 
 }

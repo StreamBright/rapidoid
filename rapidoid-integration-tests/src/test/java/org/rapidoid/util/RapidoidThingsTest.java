@@ -20,8 +20,9 @@ package org.rapidoid.util;
  * #L%
  */
 
+import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.JsonSerializer;
 import org.apache.commons.logging.LogFactory;
-import org.apache.maven.cli.MavenCli;
 import org.apache.maven.plugin.AbstractMojo;
 import org.hibernate.jpa.HibernatePersistenceProvider;
 import org.junit.Test;
@@ -29,8 +30,9 @@ import org.rapidoid.RapidoidThing;
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
 import org.rapidoid.cls.Cls;
-import org.rapidoid.orm.DbEntity;
 import org.rapidoid.test.TestCommons;
+import org.rapidoid.orm.DbEntity;
+import org.rapidoid.plugin.app.EmbeddedMavenCli;
 import org.rapidoid.u.U;
 
 import java.io.OutputStream;
@@ -49,15 +51,18 @@ public class RapidoidThingsTest {
 				U.must(RapidoidThing.class.isAssignableFrom(clazz)
 					|| clazz == TestCommons.class
 					|| cls.startsWith("org.rapidoid.fluent.")
+					|| cls.startsWith("org.rapidoid.benchmark.")
 					|| Exception.class.isAssignableFrom(clazz)
 					|| ClassLoader.class.isAssignableFrom(clazz)
 					|| HibernatePersistenceProvider.class.isAssignableFrom(clazz)
 					|| OutputStream.class.isAssignableFrom(clazz)
 					|| Map.class.isAssignableFrom(clazz)
 					|| AbstractMojo.class.isAssignableFrom(clazz)
-					|| DbEntity.class.isAssignableFrom(clazz)
-					|| MavenCli.class.isAssignableFrom(clazz)
 					|| LogFactory.class.isAssignableFrom(clazz)
+					|| DbEntity.class.isAssignableFrom(clazz)
+					|| EmbeddedMavenCli.class.isAssignableFrom(clazz)
+					|| JsonSerializer.class.isAssignableFrom(clazz)
+					|| JsonDeserializer.class.isAssignableFrom(clazz)
 					|| Thread.class.isAssignableFrom(clazz), "" + cls);
 			}
 		}

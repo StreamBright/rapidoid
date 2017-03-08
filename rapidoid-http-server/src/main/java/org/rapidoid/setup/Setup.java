@@ -1,6 +1,5 @@
 package org.rapidoid.setup;
 
-import org.rapidoid.AuthBootstrap;
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
 import org.rapidoid.collection.Coll;
@@ -12,10 +11,7 @@ import org.rapidoid.ctx.Ctxs;
 import org.rapidoid.data.JSON;
 import org.rapidoid.env.Env;
 import org.rapidoid.env.RapidoidEnv;
-import org.rapidoid.http.FastHttp;
-import org.rapidoid.http.HttpRoutes;
-import org.rapidoid.http.ReqHandler;
-import org.rapidoid.http.ReqRespHandler;
+import org.rapidoid.http.*;
 import org.rapidoid.http.customize.Customization;
 import org.rapidoid.http.customize.ViewResolver;
 import org.rapidoid.http.handler.HttpHandler;
@@ -32,16 +28,18 @@ import org.rapidoid.job.Jobs;
 import org.rapidoid.lambda.NParamLambda;
 import org.rapidoid.log.Log;
 import org.rapidoid.net.Server;
-import org.rapidoid.security.Role;
 import org.rapidoid.u.U;
 import org.rapidoid.util.AppInfo;
-import org.rapidoid.util.Constants;
-import org.rapidoid.util.Msc;
+import org.rapidoid.util.LazyInit;
+import org.rapidoid.util.MscOpts;
 import org.rapidoid.util.Once;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
+
+import static org.rapidoid.util.Constants.*;
 
 /*
  * #%L
@@ -65,16 +63,19 @@ import java.util.Map;
 
 @Authors("Nikolche Mihajlovski")
 @Since("5.1.0")
-public class Setup extends RapidoidInitializer implements Constants {
+public class Setup extends RapidoidInitializer {
 
-	private static final String ADMIN_ZONE = Msc.isPlatform() ? "platform" : "admin";
+	private static final LazyInit<DefaultSetup> DEFAULT = new LazyInit<>(new Callable<DefaultSetup>() {
+		@Override
+		public DefaultSetup call() throws Exception {
+			return new DefaultSetup();
+		}
+	});
 
-	static final Setup ON = new Setup("app", "main", "0.0.0.0", 8080, IoC.defaultContext(), Conf.ROOT, Conf.ON);
-	static final Setup ADMIN = new Setup("admin", ADMIN_ZONE, "0.0.0.0", 8080, IoC.defaultContext(), Conf.ROOT, Conf.ADMIN);
-
-	private static final List<Setup> instances = Coll.synchronizedList(ON, ADMIN);
+	static final List<Setup> instances = Coll.synchronizedList();
 
 	static {
+
 		if (Ctxs.getPersisterProvider() == null) {
 			Ctxs.setPersisterProvider(new CustomizableSetupAwarePersisterProvider());
 		}
@@ -87,13 +88,10 @@ public class Setup extends RapidoidInitializer implements Constants {
 				Jobs.shutdownNow();
 			}
 		});
-
-		initDefaults();
 	}
 
 	private final String name;
 	private final String zone;
-	private final Config config;
 	private final Config serverConfig;
 
 	private final String defaultAddress;
@@ -121,7 +119,12 @@ public class Setup extends RapidoidInitializer implements Constants {
 	public static Setup create(String name) {
 		IoCContext ioc = IoC.createContext().name(name);
 		Config config = Conf.section(name);
-		Setup setup = new Setup(name, "main", "0.0.0.0", 8080, ioc, config, config);
+
+		Customization customization = new Customization(name, My.custom(), config);
+		HttpRoutesImpl routes = new HttpRoutesImpl(customization);
+
+		Setup setup = new Setup(name, "main", "0.0.0.0", 8080, ioc, config, customization, routes);
+
 		instances.add(setup);
 		return setup;
 	}
@@ -131,7 +134,7 @@ public class Setup extends RapidoidInitializer implements Constants {
 		instances.remove(this);
 	}
 
-	private Setup(String name, String zone, String defaultAddress, int defaultPort, IoCContext ioCContext, Config config, Config serverConfig) {
+	Setup(String name, String zone, String defaultAddress, int defaultPort, IoCContext ioCContext, Config serverConfig, Customization customization, HttpRoutesImpl routes) {
 		this.name = name;
 		this.zone = zone;
 
@@ -139,14 +142,18 @@ public class Setup extends RapidoidInitializer implements Constants {
 		this.defaultPort = defaultPort;
 
 		this.ioCContext = ioCContext;
-
-		this.config = config;
 		this.serverConfig = serverConfig;
-
-		this.customization = new Customization(name, My.custom(), config, serverConfig);
-		this.routes = new HttpRoutesImpl(customization);
-
+		this.customization = customization;
+		this.routes = routes;
 		this.defaults.zone(zone);
+	}
+
+	static Setup on() {
+		return DEFAULT.get().on;
+	}
+
+	static Setup admin() {
+		return DEFAULT.get().admin;
 	}
 
 	public FastHttp http() {
@@ -155,18 +162,19 @@ public class Setup extends RapidoidInitializer implements Constants {
 		}
 
 		synchronized (this) {
-			if (isAdminAndSameAsApp() && ON.http != null) {
-				return ON.http;
+			if (isAdminAndSameAsApp() && on().http != null) {
+				return on().http;
 
-			} else if (isAppAndSameAsAdmin() && ADMIN.http != null) {
-				return ADMIN.http;
+			} else if (isAppAndSameAsAdmin() && admin().http != null) {
+				return admin().http;
 			}
 
 			if (http == null) {
 				if (isAppOrAdminOnSameServer()) {
-					http = new FastHttp(U.array(ON.routes, ADMIN.routes), ON.serverConfig);
+					U.must(on().routes == admin().routes);
+					http = new FastHttp(new HttpRoutesGroup(on().routes), on().serverConfig);
 				} else {
-					http = new FastHttp(U.array(routes), serverConfig);
+					http = new FastHttp(new HttpRoutesGroup(routes), serverConfig);
 				}
 			}
 		}
@@ -184,24 +192,24 @@ public class Setup extends RapidoidInitializer implements Constants {
 
 			HttpProcessor proc = processor != null ? processor : http();
 
-			if (Env.dev() && !On.changes().isIgnored() && Msc.hasRapidoidWatch()) {
+			if (Env.dev() && !On.changes().isIgnored() && MscOpts.hasRapidoidWatch()) {
 				proc = new AppRestartProcessor(this, proc);
 				On.changes().byDefaultRestart();
 			}
 
 			if (delegateAdminToApp()) {
-				server = ON.server();
+				server = on().server();
 
 			} else if (delegateAppToAdmin()) {
-				server = ADMIN.server();
+				server = admin().server();
 			}
 
 			if (server == null) {
 				int onPort;
 
 				if (isAppOrAdminOnSameServer()) {
-					onPort = ON.port();
-					server = proc.listen(ON.address(), onPort);
+					onPort = on().port();
+					server = proc.listen(on().address(), onPort);
 				} else {
 					onPort = port();
 					server = proc.listen(address(), onPort);
@@ -220,31 +228,31 @@ public class Setup extends RapidoidInitializer implements Constants {
 	}
 
 	private boolean delegateAdminToApp() {
-		return isAdminAndSameAsApp() && ON.server != null;
+		return isAdminAndSameAsApp() && on().server != null;
 	}
 
 	private boolean delegateAppToAdmin() {
-		return isAppAndSameAsAdmin() && ADMIN.server != null;
+		return isAppAndSameAsAdmin() && admin().server != null;
 	}
 
-	public static boolean appAndAdminOnSameServer() {
-		return U.eq(ADMIN.calcPort(), ON.calcPort());
+	static boolean appAndAdminOnSameServer() {
+		return U.eq(Conf.ADMIN.get("port"), "same");
 	}
 
-	public boolean isAppAndSameAsAdmin() {
+	private boolean isAppAndSameAsAdmin() {
 		return isApp() && appAndAdminOnSameServer();
 	}
 
-	public boolean isAdminAndSameAsApp() {
+	private boolean isAdminAndSameAsApp() {
 		return isAdmin() && appAndAdminOnSameServer();
 	}
 
 	public boolean isAdmin() {
-		return this == ADMIN;
+		return this == admin();
 	}
 
 	public boolean isApp() {
-		return this == ON;
+		return this == on();
 	}
 
 	public synchronized void activate() {
@@ -273,6 +281,11 @@ public class Setup extends RapidoidInitializer implements Constants {
 	public OnRoute route(String verb, String path) {
 		activate();
 		return new OnRoute(http(), defaults, routes, verb.toUpperCase(), path);
+	}
+
+	public OnRoute any(String path) {
+		activate();
+		return new OnRoute(http(), defaults, routes, ANY, path);
 	}
 
 	public OnRoute get(String path) {
@@ -473,21 +486,6 @@ public class Setup extends RapidoidInitializer implements Constants {
 		if (viewResolver instanceof AbstractViewResolver) {
 			((AbstractViewResolver) viewResolver).reset();
 		}
-
-		initDefaults();
-	}
-
-	static void initDefaults() {
-		ADMIN.defaults().roles(Role.ADMINISTRATOR);
-
-		ADMIN.routes().onInit(new Runnable() {
-			@Override
-			public void run() {
-				if (Env.dev()) {
-					AuthBootstrap.bootstrapAdminCredentials();
-				}
-			}
-		});
 	}
 
 	public static List<Setup> instances() {
@@ -567,7 +565,7 @@ public class Setup extends RapidoidInitializer implements Constants {
 		if (U.notEmpty(portCfg)) {
 			if (portCfg.equalsIgnoreCase("same")) {
 				U.must(!isApp(), "Cannot configure the app port (on.port) with value = 'same'!");
-				return ON.port();
+				return on().port();
 
 			} else {
 				return U.num(portCfg);
@@ -593,4 +591,7 @@ public class Setup extends RapidoidInitializer implements Constants {
 		beans(beans.getAnnotated(U.set(IoC.ANNOTATIONS)));
 	}
 
+	static void initDefaults() {
+		DEFAULT.get().initDefaults();
+	}
 }

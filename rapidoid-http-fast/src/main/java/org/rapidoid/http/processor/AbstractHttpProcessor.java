@@ -58,4 +58,11 @@ public abstract class AbstractHttpProcessor extends RapidoidThing implements Htt
 	public void syncBufs(boolean syncBufs) {
 		this.syncBufs = syncBufs;
 	}
+
+	@Override
+	public void waitToInitialize() {
+		if (next != null) {
+			next.waitToInitialize();
+		}
+	}
 }

@@ -1,16 +1,11 @@
 package org.rapidoid.jdbc;
 
-import org.rapidoid.RapidoidThing;
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
-import org.rapidoid.beany.Beany;
-import org.rapidoid.beany.Prop;
-import org.rapidoid.cls.Cls;
-import org.rapidoid.u.U;
-import org.rapidoid.util.Msc;
+import org.rapidoid.collection.Coll;
+import org.rapidoid.datamodel.Results;
 
-import java.sql.*;
-import java.util.List;
+import java.sql.Connection;
 import java.util.Map;
 import java.util.UUID;
 
@@ -36,177 +31,104 @@ import java.util.UUID;
 
 @Authors("Nikolche Mihajlovski")
 @Since("3.0.0")
-public class JDBC extends RapidoidThing {
+public class JDBC extends JdbcUtil {
 
-	private static volatile JdbcClient DEFAULT;
+	private static final Map<String, JdbcClient> APIS = Coll.autoExpandingMap(String.class, JdbcClient.class);
 
 	public static synchronized void reset() {
-		DEFAULT = null;
+		APIS.clear();
 	}
 
+	/**
+	 * Use JDBC#api instead.
+	 */
+	@Deprecated
 	public static JdbcClient newApi() {
-		return new JdbcClient();
+		return api(UUID.randomUUID().toString());
 	}
 
-	public static synchronized JdbcClient setup(String url, String driver, String username, String password) {
-		DEFAULT = new JdbcClient();
-
-		DEFAULT.url(url);
-		DEFAULT.driver(driver);
-		DEFAULT.username(username);
-		DEFAULT.password(password);
-
-		return DEFAULT;
+	public static synchronized JdbcClient api() {
+		return APIS.get("default");
 	}
 
+	public static synchronized JdbcClient api(String name) {
+		return APIS.get(name);
+	}
+
+	/**
+	 * Use JDBC#api instead.
+	 */
+	@Deprecated
 	public static synchronized JdbcClient defaultApi() {
-		if (DEFAULT == null) {
-			String url = JDBCConfig.url();
-			String driver = JDBCConfig.driver();
-			String username = JDBCConfig.username();
-			String password = JDBCConfig.password();
-
-			DEFAULT = setup(url, driver, username, password);
-		}
-
-		return DEFAULT;
+		return api();
 	}
 
 	public static JdbcClient username(String username) {
-		return defaultApi().username(username);
+		return api().username(username);
 	}
 
 	public static JdbcClient password(String password) {
-		return defaultApi().password(password);
+		return api().password(password);
 	}
 
 	public static JdbcClient driver(String driver) {
-		return defaultApi().driver(driver);
+		return api().driver(driver);
 	}
 
 	public static JdbcClient url(String url) {
-		return defaultApi().url(url);
+		return api().url(url);
 	}
 
 	public static JdbcClient mysql(String host, int port, String databaseName) {
-		return defaultApi().mysql(host, port, databaseName);
+		return api().mysql(host, port, databaseName);
 	}
 
 	public static JdbcClient h2(String databaseName) {
-		return defaultApi().h2(databaseName);
+		return api().h2(databaseName);
 	}
 
 	public static JdbcClient hsql(String databaseName) {
-		return defaultApi().hsql(databaseName);
+		return api().hsql(databaseName);
 	}
 
 	public static int execute(String sql, Object... args) {
-		return defaultApi().execute(sql, args);
+		return api().execute(sql, args);
 	}
 
-	public static void tryToExecute(String sql, Object... args) {
-		defaultApi().tryToExecute(sql, args);
+	public static int execute(String sql, Map<String, ?> namedArgs) {
+		return api().execute(sql, namedArgs);
 	}
 
-	public static <T> List<T> query(Class<T> resultType, String sql, Object... args) {
-		return defaultApi().query(resultType, sql, args);
+	public static int tryToExecute(String sql, Object... args) {
+		return api().tryToExecute(sql, args);
 	}
 
-	public static <T> List<Map<String, Object>> query(String sql, Object... args) {
-		return defaultApi().query(sql, args);
+	public static int tryToExecute(String sql, Map<String, ?> namedArgs) {
+		return api().tryToExecute(sql, namedArgs);
+	}
+
+	public static <T> Results<T> query(Class<T> resultType, String sql, Object... args) {
+		return api().query(resultType, sql, args);
+	}
+
+	public static <T> Results<T> query(Class<T> resultType, String sql, Map<String, ?> namedArgs) {
+		return api().query(resultType, sql, namedArgs);
+	}
+
+	public static Results<Map<String, Object>> query(String sql, Object... args) {
+		return api().query(sql, args);
+	}
+
+	public static Results<Map<String, Object>> query(String sql, Map<String, ?> namedArgs) {
+		return api().query(sql, namedArgs);
 	}
 
 	public static Connection getConnection() {
-		return defaultApi().getConnection();
+		return api().getConnection();
 	}
 
 	public static void release(Connection connection) {
-		defaultApi().release(connection);
-	}
-
-	public static PreparedStatement prepare(Connection conn, String sql, Object... args) {
-		try {
-			PreparedStatement stmt = conn.prepareStatement(sql);
-
-			bind(stmt, args);
-
-			return stmt;
-
-		} catch (SQLException e) {
-			throw new RuntimeException("Cannot create prepared statement!", e);
-		}
-	}
-
-	public static void bind(PreparedStatement stmt, Object... args) throws SQLException {
-		for (int i = 0; i < args.length; i++) {
-			Object arg = args[i];
-
-			if (arg instanceof byte[]) {
-				byte[] bytes = (byte[]) arg;
-				stmt.setBytes(i + 1, bytes);
-
-			} else if (arg instanceof UUID) {
-				UUID uuid = (UUID) arg;
-				byte[] bytes = Msc.uuidToBytes(uuid);
-				stmt.setBytes(i + 1, bytes);
-
-			} else {
-				stmt.setObject(i + 1, arg);
-			}
-		}
-	}
-
-	public static <T> List<T> rows(Class<T> resultType, ResultSet rs) throws SQLException {
-		List<T> rows = U.list();
-
-		ResultSetMetaData meta = rs.getMetaData();
-		int columnsN = meta.getColumnCount();
-		Prop[] props = new Prop[columnsN];
-
-		for (int i = 0; i < props.length; i++) {
-			String name = meta.getColumnLabel(i + 1);
-			props[i] = Beany.property(resultType, name, false);
-		}
-
-		while (rs.next()) {
-			T row = Cls.newInstance(resultType);
-
-			for (int i = 0; i < columnsN; i++) {
-				if (props[i] != null) {
-					Object value = rs.getObject(i + 1); // 1-indexed
-					props[i].set(row, value);
-				}
-			}
-
-			rows.add(row);
-		}
-
-		return rows;
-	}
-
-	public static List<Map<String, Object>> rows(ResultSet rs) throws SQLException {
-		List<Map<String, Object>> rows = U.list();
-
-		while (rs.next()) {
-			rows.add(row(rs));
-		}
-
-		return rows;
-	}
-
-	public static Map<String, Object> row(ResultSet rs) throws SQLException {
-		Map<String, Object> row = U.map();
-
-		ResultSetMetaData meta = rs.getMetaData();
-		int columnsNumber = meta.getColumnCount();
-
-		for (int i = 1; i <= columnsNumber; i++) {
-			String name = meta.getColumnLabel(i);
-			Object value = rs.getObject(i);
-			row.put(name, value);
-		}
-
-		return row;
+		api().release(connection);
 	}
 
 }

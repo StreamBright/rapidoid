@@ -11,6 +11,8 @@ import org.rapidoid.http.RouteConfig;
 import org.rapidoid.http.handler.HttpHandler;
 import org.rapidoid.u.U;
 
+import java.util.Date;
+
 /*
  * #%L
  * rapidoid-http-fast
@@ -43,6 +45,8 @@ public class RouteImpl extends RapidoidThing implements Route {
 
 	private volatile RouteOptions options;
 
+	private volatile Date lastChangedAt = new Date();
+
 	private final Cache<HTTPCacheKey, CachedResp> cache;
 
 	public RouteImpl(HttpVerb verb, String path, HttpHandler handler, RouteOptions options) {
@@ -61,7 +65,9 @@ public class RouteImpl extends RapidoidThing implements Route {
 		if (options == null || options.cacheTTL() <= 0) return null;
 
 		return Caching.of(HTTPCacheKey.class, CachedResp.class)
+			.name(verb + " " + path)
 			.ttl(options.cacheTTL())
+			.capacity(options.cacheCapacity())
 			.build();
 	}
 
@@ -118,5 +124,10 @@ public class RouteImpl extends RapidoidThing implements Route {
 	@Override
 	public Cache<HTTPCacheKey, CachedResp> cache() {
 		return cache;
+	}
+
+	@Override
+	public Date lastChangedAt() {
+		return lastChangedAt;
 	}
 }

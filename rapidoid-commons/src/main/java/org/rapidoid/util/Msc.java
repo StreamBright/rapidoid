@@ -20,9 +20,11 @@ import org.rapidoid.ctx.Ctx;
 import org.rapidoid.ctx.Ctxs;
 import org.rapidoid.env.Env;
 import org.rapidoid.event.Events;
+import org.rapidoid.group.Groups;
 import org.rapidoid.insight.Insights;
 import org.rapidoid.io.IO;
 import org.rapidoid.io.Res;
+import org.rapidoid.job.Jobs;
 import org.rapidoid.lambda.*;
 import org.rapidoid.log.GlobalCfg;
 import org.rapidoid.log.Log;
@@ -75,7 +77,7 @@ import java.util.zip.ZipInputStream;
 
 @Authors("Nikolche Mihajlovski")
 @Since("2.0.0")
-public class Msc extends RapidoidThing implements Constants {
+public class Msc extends RapidoidThing {
 
 	private static final String SPECIAL_ARG_REGEX = "\\s*(.*?)\\s*(->|<-|:=|<=|=>|==)\\s*(.*?)\\s*";
 
@@ -86,6 +88,8 @@ public class Msc extends RapidoidThing implements Constants {
 	private static volatile long measureStart;
 
 	private static boolean platform;
+
+	private static boolean mavenBuild;
 
 	public static final ScheduledThreadPoolExecutor EXECUTOR = new ScheduledThreadPoolExecutor(8,
 		new RapidoidThreadFactory("utils", true));
@@ -649,14 +653,14 @@ public class Msc extends RapidoidThing implements Constants {
 	}
 
 	public static String uri(String... parts) {
-		return "/" + constructPath("/", false, parts);
+		return "/" + constructPath("/", false, false, parts);
 	}
 
 	public static String path(String... parts) {
-		return constructPath(File.separator, true, parts);
+		return constructPath(File.separator, true, false, parts);
 	}
 
-	private static String constructPath(String separator, boolean preserveFirstSegment, String... parts) {
+	private static String constructPath(String separator, boolean preserveFirstSegment, boolean uriEscape, String... parts) {
 		String s = "";
 
 		for (int i = 0; i < parts.length; i++) {
@@ -676,6 +680,9 @@ public class Msc extends RapidoidThing implements Constants {
 				if (!s.isEmpty() && !s.endsWith(separator)) {
 					s += separator;
 				}
+
+				if (uriEscape) part = urlEncode(part);
+
 				s += part;
 			}
 		}
@@ -784,46 +791,6 @@ public class Msc extends RapidoidThing implements Constants {
 		}
 	}
 
-	public static boolean hasValidation() {
-		return Cls.exists("javax.validation.Validation");
-	}
-
-	public static boolean hasJPA() {
-		return Cls.exists("javax.persistence.Entity");
-	}
-
-	public static boolean hasHibernate() {
-		return Cls.exists("org.hibernate.cfg.Configuration");
-	}
-
-	public static boolean hasRapidoidJPA() {
-		return Cls.exists("org.rapidoid.jpa.JPA");
-	}
-
-	public static boolean hasRapidoidGUI() {
-		return Cls.exists("org.rapidoid.gui.GUI");
-	}
-
-	public static boolean hasRapidoidWatch() {
-		return Cls.exists("org.rapidoid.reload.Reload");
-	}
-
-	public static boolean hasRapidoidPlatform() {
-		return Cls.exists("org.rapidoid.standalone.Main");
-	}
-
-	public static boolean hasLogback() {
-		return Cls.exists("ch.qos.logback.classic.Logger");
-	}
-
-	public static boolean hasSlf4jImpl() {
-		return Cls.exists("org.slf4j.impl.StaticLoggerBinder");
-	}
-
-	public static boolean hasMavenEmbedder() {
-		return Cls.exists("org.apache.maven.cli.MavenCli");
-	}
-
 	public static boolean isValidationError(Throwable error) {
 		return (error instanceof InvalidData) || error.getClass().getName().startsWith("javax.validation.");
 	}
@@ -852,7 +819,10 @@ public class Msc extends RapidoidThing implements Constants {
 
 	public static void invokeMain(Class<?> clazz, String[] args) {
 		Method main = Cls.getMethod(clazz, "main", String[].class);
+
 		U.must(main.getReturnType() == void.class);
+		U.must(Modifier.isPublic(main.getModifiers()));
+		U.must(Modifier.isStatic(main.getModifiers()));
 
 		Cls.invokeStatic(main, new Object[]{args});
 	}
@@ -1022,6 +992,8 @@ public class Msc extends RapidoidThing implements Constants {
 		Res.reset();
 		AppInfo.reset();
 		Conf.reset();
+		Groups.reset();
+		Jobs.reset();
 		Env.reset();
 
 		Ctxs.reset();
@@ -1128,16 +1100,22 @@ public class Msc extends RapidoidThing implements Constants {
 		switch (sep) {
 
 			case "->":
-				left = "proxy." + left + ".upstream"; // FIXME use :
+				left = "proxy." + left;
 				break;
 
 			case "<=":
-				left = "api." + left + ".sql";
+				left = "api." + left;
+				break;
+
+			case "<-":
+				left = "pages." + left;
 				break;
 
 			default:
 				throw U.rte("Argument operator not supported: " + sep);
 		}
+
+		Log.info("Replacing configuration shortcut", "shortcut", arg, "key", left, "value", right);
 
 		arguments.put(left, right);
 	}
@@ -1214,6 +1192,14 @@ public class Msc extends RapidoidThing implements Constants {
 
 	public static boolean isPlatform() {
 		return platform;
+	}
+
+	public static boolean isMavenBuild() {
+		return mavenBuild;
+	}
+
+	public static void setMavenBuild(boolean mavenBuild) {
+		Msc.mavenBuild = mavenBuild;
 	}
 
 	public static String errorMsg(Throwable error) {
@@ -1331,4 +1317,41 @@ public class Msc extends RapidoidThing implements Constants {
 		}
 	}
 
+	public static void printRapidoidBanner() {
+		U.print(IO.load("rapidoid.txt"));
+	}
+
+	public static boolean isSilent() {
+		return isMavenBuild();
+	}
+
+	public static String specialUriPrefix() {
+		return Msc.isPlatform() ? "/rapidoid/" : "/_";
+	}
+
+	public static String specialUri(String suffix) {
+		U.must(!suffix.startsWith("/"), "The URI suffix must not start with '/'");
+		return specialUriPrefix() + suffix;
+	}
+
+	public static String semiSpecialUri(String suffix) {
+		U.must(!suffix.startsWith("/"), "The URI suffix must not start with '/'");
+		return Msc.isPlatform() ? "/rapidoid/" + suffix : "/" + suffix;
+	}
+
+	public static String http() {
+		return MscOpts.isTestingHttps() ? "https" : "http";
+	}
+
+	public static String urlWithProtocol(String url) {
+		if (url.startsWith("http://") || url.startsWith("https://")) {
+			return url;
+		} else {
+			return Msc.http() + "://" + url;
+		}
+	}
+
+	public static boolean timedOut(long since, long timeout) {
+		return U.time() - since > timeout;
+	}
 }

@@ -356,7 +356,10 @@ public class ConfigImpl extends RapidoidThing implements Config {
 
 	@Override
 	public Config parent() {
-		return isRoot ? null : root.sub(baseKeys.subList(0, baseKeys.size() - 1));
+		if (isRoot) return null;
+
+		List<String> parentsKeys = baseKeys.subList(0, baseKeys.size() - 1);
+		return parentsKeys.isEmpty() ? root : root.sub(parentsKeys);
 	}
 
 	@Override
@@ -403,7 +406,7 @@ public class ConfigImpl extends RapidoidThing implements Config {
 	}
 
 	@Override
-	public ConfigAlternatives or(Config alternative) {
+	public ConfigAlternatives or(BasicConfig alternative) {
 		return new ConfigAlternatives(this, alternative);
 	}
 
@@ -592,4 +595,13 @@ public class ConfigImpl extends RapidoidThing implements Config {
 		}
 	}
 
+	@Override
+	public Config defaultOrCustom(String name) {
+		U.must(U.notEmpty(name), "The configuration name cannot be empty! Use name 'default' for the default configuration.");
+
+		if (name.equalsIgnoreCase("default")) return this;
+
+		String configKey = U.last(keys()) + "-" + name;
+		return parent().sub(configKey);
+	}
 }

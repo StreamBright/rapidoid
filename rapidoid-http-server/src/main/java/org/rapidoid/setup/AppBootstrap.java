@@ -26,7 +26,7 @@ import org.rapidoid.annotation.Since;
 import org.rapidoid.cls.Cls;
 import org.rapidoid.jpa.JPA;
 import org.rapidoid.u.U;
-import org.rapidoid.util.Msc;
+import org.rapidoid.util.MscOpts;
 
 @Authors("Nikolche Mihajlovski")
 @Since("5.1.0")
@@ -42,7 +42,7 @@ public class AppBootstrap extends RapidoidThing {
 	private static final ServiceBootstrap jpa = new ServiceBootstrap() {
 		@Override
 		protected void bootstrap() {
-			if (Msc.hasJPA()) {
+			if (MscOpts.hasJPA()) {
 				JPA.bootstrap(App.path());
 			}
 		}
@@ -87,6 +87,20 @@ public class AppBootstrap extends RapidoidThing {
 		@Override
 		protected void bootstrap() {
 			getGoodies().application(Admin.setup());
+		}
+	};
+
+	private static final ServiceBootstrap processes = new ServiceBootstrap() {
+		@Override
+		protected void bootstrap() {
+			getGoodies().processes(Admin.setup());
+		}
+	};
+
+	private static final ServiceBootstrap manageables = new ServiceBootstrap() {
+		@Override
+		protected void bootstrap() {
+			getGoodies().manageables(Admin.setup());
 		}
 	};
 
@@ -149,6 +163,16 @@ public class AppBootstrap extends RapidoidThing {
 
 	public AppBootstrap application() {
 		application.run();
+		return this;
+	}
+
+	public AppBootstrap processes() {
+		processes.run();
+		return this;
+	}
+
+	public AppBootstrap manageables() {
+		manageables.run();
 		return this;
 	}
 
@@ -217,6 +241,8 @@ public class AppBootstrap extends RapidoidThing {
 		entities.reset();
 		overview.reset();
 		application.reset();
+		processes.reset();
+		manageables.reset();
 		lifecycle.reset();
 		jmx.reset();
 		metrics.reset();

@@ -5,6 +5,7 @@ import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
 import org.rapidoid.annotation.TransactionMode;
 import org.rapidoid.collection.Coll;
+import org.rapidoid.http.HttpUtils;
 import org.rapidoid.http.HttpWrapper;
 import org.rapidoid.http.MediaType;
 import org.rapidoid.http.RouteConfig;
@@ -37,7 +38,9 @@ import java.util.Set;
 @Since("5.1.0")
 public class RouteOptions extends RapidoidThing implements RouteConfig {
 
-	private volatile MediaType contentType = MediaType.HTML_UTF_8;
+	private volatile MediaType contentType = HttpUtils.getDefaultContentType();
+
+	private volatile boolean contentTypeCustomized;
 
 	private volatile String view;
 
@@ -47,7 +50,7 @@ public class RouteOptions extends RapidoidThing implements RouteConfig {
 
 	private volatile boolean managed = true;
 
-	private volatile TransactionMode transactionMode = TransactionMode.NONE;
+	private volatile TransactionMode transaction = TransactionMode.NONE;
 
 	private final Set<String> roles = Coll.synchronizedSet();
 
@@ -55,15 +58,22 @@ public class RouteOptions extends RapidoidThing implements RouteConfig {
 
 	private volatile long cacheTTL;
 
+	private volatile int cacheCapacity = 100;
+
 	@Override
 	public String toString() {
-		String prefix = mvc ? "MVC" : "";
-		return prefix + "{" +
-			(contentType != null ? "contentType=" + contentType.info() : "") +
-			(view != null ? ", view='" + view + '\'' : "") +
-			(transactionMode != null ? ", transactionMode='" + transactionMode + '\'' : "") +
-			(U.notEmpty(roles) ? ", roles=" + roles : "") +
-			(U.notEmpty(wrappers) ? ", wrappers=" + wrappers : "") +
+		return "RouteOptions{" +
+			"contentType=" + contentType +
+			", contentTypeCustomized=" + contentTypeCustomized +
+			", view='" + view + '\'' +
+			", mvc=" + mvc +
+			", zone='" + zone + '\'' +
+			", managed=" + managed +
+			", transaction=" + transaction +
+			", roles=" + roles +
+			", wrappers=" + Arrays.toString(wrappers) +
+			", cacheTTL=" + cacheTTL +
+			", cacheCapacity=" + cacheCapacity +
 			'}';
 	}
 
@@ -75,6 +85,7 @@ public class RouteOptions extends RapidoidThing implements RouteConfig {
 	@Override
 	public RouteOptions contentType(MediaType contentType) {
 		this.contentType = contentType;
+		this.contentTypeCustomized = true;
 		return this;
 	}
 
@@ -85,6 +96,7 @@ public class RouteOptions extends RapidoidThing implements RouteConfig {
 
 	@Override
 	public RouteOptions view(String view) {
+		HttpUtils.validateViewName(view);
 		this.view = view;
 		return this;
 	}
@@ -101,13 +113,13 @@ public class RouteOptions extends RapidoidThing implements RouteConfig {
 	}
 
 	@Override
-	public TransactionMode transactionMode() {
-		return transactionMode;
+	public TransactionMode transaction() {
+		return transaction;
 	}
 
 	@Override
-	public RouteOptions transactionMode(TransactionMode transactionMode) {
-		this.transactionMode = transactionMode;
+	public RouteOptions transaction(TransactionMode transaction) {
+		this.transaction = transaction;
 		return this;
 	}
 
@@ -166,20 +178,36 @@ public class RouteOptions extends RapidoidThing implements RouteConfig {
 		return this;
 	}
 
+	@Override
+	public int cacheCapacity() {
+		return cacheCapacity;
+	}
+
+	@Override
+	public RouteOptions cacheCapacity(int cacheCapacity) {
+		this.cacheCapacity = cacheCapacity;
+		return this;
+	}
+
 	public RouteOptions copy() {
 		RouteOptions copy = new RouteOptions();
 
-		copy.contentType(contentType());
-		copy.view(view());
-		copy.mvc(mvc());
-		copy.transactionMode(transactionMode());
-		copy.roles(U.arrayOf(String.class, roles));
-		copy.wrappers(wrappers());
-		copy.zone(zone());
-		copy.managed(managed());
-		copy.cacheTTL(cacheTTL());
+		copy.contentType = this.contentType;
+		copy.view = this.view;
+		copy.mvc = this.mvc;
+		copy.transaction = this.transaction;
+		Coll.assign(copy.roles, this.roles);
+		copy.wrappers = U.array(this.wrappers);
+		copy.zone = this.zone;
+		copy.managed = this.managed;
+		copy.cacheTTL = this.cacheTTL;
+		copy.cacheCapacity = this.cacheCapacity;
 
 		return copy;
+	}
+
+	public boolean contentTypeCustomized() {
+		return contentTypeCustomized;
 	}
 
 	@Override
@@ -192,10 +220,11 @@ public class RouteOptions extends RapidoidThing implements RouteConfig {
 		if (mvc != that.mvc) return false;
 		if (managed != that.managed) return false;
 		if (cacheTTL != that.cacheTTL) return false;
+		if (cacheCapacity != that.cacheCapacity) return false;
 		if (contentType != null ? !contentType.equals(that.contentType) : that.contentType != null) return false;
 		if (view != null ? !view.equals(that.view) : that.view != null) return false;
 		if (zone != null ? !zone.equals(that.zone) : that.zone != null) return false;
-		if (transactionMode != that.transactionMode) return false;
+		if (transaction != that.transaction) return false;
 		if (roles != null ? !roles.equals(that.roles) : that.roles != null) return false;
 		return Arrays.equals(wrappers, that.wrappers);
 	}
@@ -207,10 +236,11 @@ public class RouteOptions extends RapidoidThing implements RouteConfig {
 		result = 31 * result + (mvc ? 1 : 0);
 		result = 31 * result + (zone != null ? zone.hashCode() : 0);
 		result = 31 * result + (managed ? 1 : 0);
-		result = 31 * result + (transactionMode != null ? transactionMode.hashCode() : 0);
+		result = 31 * result + (transaction != null ? transaction.hashCode() : 0);
 		result = 31 * result + (roles != null ? roles.hashCode() : 0);
 		result = 31 * result + Arrays.hashCode(wrappers);
 		result = 31 * result + (int) (cacheTTL ^ (cacheTTL >>> 32));
+		result = 31 * result + (int) (cacheCapacity ^ (cacheCapacity >>> 32));
 		return result;
 	}
 }

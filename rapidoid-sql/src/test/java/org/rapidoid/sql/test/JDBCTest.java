@@ -48,38 +48,38 @@ public class JDBCTest extends SQLTestCommons {
 			eq(e.getCause().getClass(), CommunicationsException.class);
 		}
 
-		isFalse(JDBC.defaultApi().usePool());
+		isFalse(JDBC.api().usePool());
 	}
 
 	@Test
 	public void testWithH2() {
 		JDBC.h2("test");
-		insertAndCheckData(JDBC.defaultApi());
+		insertAndCheckData(JDBC.api());
 	}
 
 	@Test
 	public void testWithH2AndC3P0() {
 		new C3P0ConnectionPool(JDBC.h2("test"));
-		insertAndCheckData(JDBC.defaultApi());
+		insertAndCheckData(JDBC.api());
 	}
 
 	@Test
 	public void testWithHSQLDB() {
 		JDBC.hsql("test");
-		insertAndCheckData(JDBC.defaultApi());
-		isTrue(JDBC.defaultApi().usePool());
+		insertAndCheckData(JDBC.api());
+		isTrue(JDBC.api().usePool());
 	}
 
 	@Test
 	public void testWithHSQLDBAndC3P0() {
 		new C3P0ConnectionPool(JDBC.hsql("test"));
-		insertAndCheckData(JDBC.defaultApi());
+		insertAndCheckData(JDBC.api());
 	}
 
 	@Test
 	public void testMultiAPI() {
-		JdbcClient client1 = JDBC.newApi().hsql("test");
-		JdbcClient client2 = JDBC.newApi().h2("test");
+		JdbcClient client1 = JDBC.api("a").hsql("test");
+		JdbcClient client2 = JDBC.api("b").h2("test");
 
 		insertAndCheckData(client1);
 		insertAndCheckData(client2);
@@ -96,13 +96,13 @@ public class JDBCTest extends SQLTestCommons {
 			client.execute("INSERT INTO movie VALUES (?, ?)", 100 + i, "movie" + i);
 		}
 
-		List<Map<String, Object>> rows = client.query("SELECT * FROM movie WHERE id < ?", 25);
+		List<Map<String, Object>> rows = client.query("SELECT * FROM movie WHERE id < ?", 25).all();
 
 		eq(rows.size(), 2);
 		eq(Msc.lowercase(rows.get(0)), U.map("id", 10, "title", "rambo"));
 		eq(Msc.lowercase(rows.get(1)), U.map("id", 20, "title", "hackers"));
 
-		List<Movie> movies = client.query(Movie.class, "SELECT * FROM movie WHERE id < ?", 25);
+		List<Movie> movies = client.query(Movie.class, "SELECT * FROM movie WHERE id < ?", 25).all();
 
 		eq(movies.size(), 2);
 
@@ -113,6 +113,13 @@ public class JDBCTest extends SQLTestCommons {
 		Movie movie2 = movies.get(1);
 		eq(movie2.id, 20);
 		eq(movie2.getTitle(), "Hackers");
+	}
+
+	@Test
+	public void testDefaultAPI() {
+		JdbcClient jdbc = JDBC.api();
+		JdbcClient jdbc2 = JDBC.api("default");
+		isTrue(jdbc == jdbc2);
 	}
 
 }

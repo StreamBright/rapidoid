@@ -40,7 +40,7 @@ public class JDBCPoolC3P0Test extends IsolatedIntegrationTest {
 
 		JDBC.h2("test1");
 
-		C3P0ConnectionPool pool = (C3P0ConnectionPool) JDBC.defaultApi().init().pool();
+		C3P0ConnectionPool pool = (C3P0ConnectionPool) JDBC.api().init().pool();
 		ComboPooledDataSource c3p0 = pool.pool();
 
 		// validate default config
@@ -56,7 +56,7 @@ public class JDBCPoolC3P0Test extends IsolatedIntegrationTest {
 		final Map<String, ?> expected = U.map("id", 123, "name", "xyz");
 
 		Msc.benchmarkMT(100, "select", 100000, () -> {
-			Map<String, Object> record = U.single(JDBC.query("select id, name from abc"));
+			Map<String, Object> record = U.single(JDBC.query("select id, name from abc").all());
 			record = Msc.lowercase(record);
 			eq(record, expected);
 		});
@@ -70,10 +70,10 @@ public class JDBCPoolC3P0Test extends IsolatedIntegrationTest {
 		Conf.JDBC.set("username", "sa");
 		Conf.C3P0.set("maxPoolSize", "123");
 
-		JdbcClient jdbc = JDBC.defaultApi();
+		JdbcClient jdbc = JDBC.api();
 		eq(jdbc.driver(), "org.h2.Driver");
 
-		C3P0ConnectionPool pool = (C3P0ConnectionPool) JDBC.defaultApi().init().pool();
+		C3P0ConnectionPool pool = (C3P0ConnectionPool) JDBC.api().init().pool();
 		ComboPooledDataSource c3p0 = pool.pool();
 
 		eq(c3p0.getMinPoolSize(), 5);
@@ -85,7 +85,7 @@ public class JDBCPoolC3P0Test extends IsolatedIntegrationTest {
 		final Map<String, ?> expected = U.map("id", 123, "name", "xyz");
 
 		Msc.benchmarkMT(100, "select", 100000, () -> {
-			Map<String, Object> record = U.single(JDBC.query("select id, name from abc"));
+			Map<String, Object> record = U.single(JDBC.query("select id, name from abc").all());
 			record = Msc.lowercase(record);
 			eq(record, expected);
 		});

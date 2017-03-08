@@ -25,18 +25,23 @@ import org.rapidoid.RapidoidThing;
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
 import org.rapidoid.commons.Arr;
+import org.rapidoid.commons.RapidoidInfo;
 import org.rapidoid.deploy.AppDeployer;
-import org.rapidoid.io.IO;
 import org.rapidoid.log.Log;
+import org.rapidoid.performance.BenchmarkCenter;
 import org.rapidoid.setup.App;
 import org.rapidoid.setup.On;
+import org.rapidoid.setup.PreApp;
 import org.rapidoid.setup.Setup;
 import org.rapidoid.u.U;
 import org.rapidoid.util.AppInfo;
 import org.rapidoid.util.Msc;
+import org.rapidoid.util.MscOpts;
 
 import java.awt.*;
+import java.io.File;
 import java.net.URI;
+import java.util.Arrays;
 import java.util.List;
 
 @Authors("Nikolche Mihajlovski")
@@ -49,10 +54,11 @@ public class Platform extends RapidoidThing {
 
 		initializePlatform();
 
-		interceptSpecialCommands(args);
+		if (U.notEmpty(args)) interceptSpecialCommands(args);
 
-		// Rapidoid banner
-		U.print(IO.load("rapidoid.txt"));
+		Msc.printRapidoidBanner();
+
+		printArgs(args, defaults);
 
 		startPlatformAndProcessArgs(args);
 
@@ -69,12 +75,45 @@ public class Platform extends RapidoidThing {
 		openInBrowser();
 	}
 
+	private static void printArgs(String[] args, boolean defaults) {
+		// don't print the args when displaying help
+		if (Arrays.equals(args, new String[]{"--help"})) return;
+
+		if (defaults) {
+			Log.info("No command-line arguments were specified, using the defaults:");
+		} else {
+			Log.info("Command-line arguments:");
+		}
+
+		for (String arg : args) {
+			Log.info("  " + arg);
+		}
+		Log.info("");
+	}
+
 	private static void interceptSpecialCommands(String[] args) {
-		// interpret Maven command
-		if (U.notEmpty(args) && args[0].equals("mvn")) {
-			List<String> mvnArgs = U.list(Arr.sub(args, 1, args.length));
-			int result = MavenUtil.build("/app", "/data/.m2/repository", mvnArgs);
-			System.exit(result);
+
+		String cmd = args[0];
+		String[] cmdArgs = Arr.sub(args, 1, args.length);
+
+		switch (cmd) {
+			case "mvn":
+				// interpret the "mvn" command
+				int result = MavenUtil.build("/app", "/data/.m2/repository", U.list(cmdArgs));
+				System.exit(result);
+				break;
+
+			case "benchmark":
+				// interpret the "benchmark" command
+				BenchmarkCenter.main(cmdArgs);
+				System.exit(0);
+				break;
+
+			case "password":
+				// interpret the "password" command
+				PasswordHashTool.generatePasswordHash(cmdArgs);
+				System.exit(0);
+				break;
 		}
 	}
 
@@ -92,11 +131,13 @@ public class Platform extends RapidoidThing {
 
 		separateArgs(args, normalArgs, appRefs);
 
-		App.run(U.arrayOf(String.class, normalArgs));
+		PreApp.args(U.arrayOf(String.class, normalArgs));
+		App.boot();
 
 		for (String appRef : appRefs) {
-			AppDownloader.download(appRef, "/apps");
-			MavenUtil.findAndBuildAndDeploy("/apps");
+			new File(MscOpts.appsPath()).mkdirs();
+			AppDownloader.download(appRef, MscOpts.appsPath());
+			MavenUtil.findAndBuildAndDeploy(MscOpts.appsPath());
 		}
 	}
 
@@ -113,7 +154,7 @@ public class Platform extends RapidoidThing {
 
 	private static void openInBrowser() {
 		try {
-			if (Desktop.isDesktopSupported()) {
+			if (Desktop.isDesktopSupported() && !RapidoidInfo.isSnapshot()) {
 				Desktop.getDesktop().browse(new URI(U.frmt("http://localhost:%s/", AppInfo.appPort)));
 			}
 		} catch (Exception e) {

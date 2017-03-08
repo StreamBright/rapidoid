@@ -6,10 +6,11 @@ import org.rapidoid.annotation.Since;
 import org.rapidoid.cls.Cls;
 import org.rapidoid.commons.Err;
 import org.rapidoid.data.JSON;
-import org.rapidoid.datamodel.DataItems;
+import org.rapidoid.datamodel.Results;
 import org.rapidoid.lambda.Mapper;
 import org.rapidoid.u.U;
 
+import java.lang.reflect.Constructor;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -245,19 +246,48 @@ public class Coll extends RapidoidThing {
 		return new ArrayBlockingQueue<T>(maxSize);
 	}
 
-	public static <K, V> Map<K, V> autoExpandingMap(final Class<?> clazz) {
-		return autoExpandingMap(new Mapper<K, V>() {
+	public static <K, V> Map<K, V> autoExpandingMap(final Class<K> keyClass, final Class<V> valueClass) {
+		try {
+			// search for the key-based constructor
+			final Constructor<V> constructor = valueClass.getConstructor(keyClass);
 
-			@SuppressWarnings("unchecked")
-			@Override
-			public V map(K src) throws Exception {
-				try {
-					return (V) clazz.newInstance();
-				} catch (Exception e) {
-					throw U.rte(e);
+			return autoExpandingMap(new Mapper<K, V>() {
+
+				@SuppressWarnings("unchecked")
+				@Override
+				public V map(K key) throws Exception {
+					try {
+						return (V) constructor.newInstance(key);
+					} catch (Exception e) {
+						throw U.rte(e);
+					}
 				}
+			});
+
+		} catch (NoSuchMethodException e) {
+
+			// otherwise, use the default constructor
+			Constructor<V> constructor;
+			try {
+				constructor = valueClass.getConstructor();
+			} catch (NoSuchMethodException e2) {
+				throw U.rte("Couldn't find a matching constructor for the auto-expanding map!");
 			}
-		});
+
+			final Constructor<V> defConstructor = constructor;
+			return autoExpandingMap(new Mapper<K, V>() {
+
+				@SuppressWarnings("unchecked")
+				@Override
+				public V map(K key) throws Exception {
+					try {
+						return (V) defConstructor.newInstance();
+					} catch (Exception e) {
+						throw U.rte(e);
+					}
+				}
+			});
+		}
 	}
 
 	@SuppressWarnings("serial")
@@ -333,6 +363,7 @@ public class Coll extends RapidoidThing {
 		});
 	}
 
+	@SuppressWarnings("unchecked")
 	public static <T> List<T> range(Iterable<T> items, int from, int to) {
 		U.must(from <= to, "'from' must be <= 'to'!");
 
@@ -340,9 +371,9 @@ public class Coll extends RapidoidThing {
 			return Collections.emptyList();
 		}
 
-		if (items instanceof DataItems) {
-			DataItems dataItems = (DataItems) items;
-			return dataItems.page(from, to - from);
+		if (items instanceof Results) {
+			Results results = (Results) items;
+			return results.page(from, to - from);
 		}
 
 		List<?> list = (items instanceof List<?>) ? (List<?>) items : U.list(items);
@@ -385,4 +416,13 @@ public class Coll extends RapidoidThing {
 		return JSON.parseMap(JSON.stringify(map)); // FIXME proper implementation
 	}
 
+	public static <T> Set<T> copyOf(Set<T> src) {
+		Set<T> copy;
+
+		synchronized (src) {
+			copy = U.set(src);
+		}
+
+		return copy;
+	}
 }

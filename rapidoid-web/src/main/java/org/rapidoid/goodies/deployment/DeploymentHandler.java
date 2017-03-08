@@ -13,13 +13,12 @@ import org.rapidoid.http.Req;
 import org.rapidoid.http.ReqHandler;
 import org.rapidoid.io.IO;
 import org.rapidoid.process.ProcessHandle;
-import org.rapidoid.render.Render;
 import org.rapidoid.scan.ClasspathUtil;
 import org.rapidoid.u.U;
+import org.rapidoid.util.Msc;
 import org.rapidoid.util.Tokens;
 
 import java.io.File;
-import java.io.Serializable;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -48,7 +47,7 @@ import java.util.Map;
 @Since("5.1.0")
 public class DeploymentHandler extends GUI implements ReqHandler {
 
-	public static final String SCOPES = "POST:/_stage, POST:/_deploy, GET:POST:/_deployment";
+	public static final String SCOPES = "POST:/rapidoid/stage, POST:/rapidoid/deploy, GET:POST:/rapidoid/deployment";
 
 	private static final String DEPLOYMENT_HELP = "Application deployment works by uploading a JAR and executing it in a child Java process.";
 
@@ -58,7 +57,7 @@ public class DeploymentHandler extends GUI implements ReqHandler {
 
 		if (ClasspathUtil.hasAppJar()) {
 
-			Map<String, Serializable> tokenData = U.<String, Serializable>map(Tokens._USER, Current.username(), Tokens._SCOPE, SCOPES);
+			Map<String, String> tokenData = U.map(Tokens._USER, Current.username(), Tokens._SCOPE, SCOPES);
 			String token = Tokens.serialize(tokenData);
 
 			String appJar = ClasspathUtil.appJar();
@@ -71,12 +70,12 @@ public class DeploymentHandler extends GUI implements ReqHandler {
 			info.add(copy(textarea(token).rows("2").attr("readonly", "readonly").style("width:100%; font-size: 10px;")));
 
 			info.add(h3("Upload an application JAR to stage it and then deploy it:"));
-			info.add(hardcoded(Render.file("upload-jar.html").model(U.map())));
+			info.add(render("upload-jar.html"));
 
 			info.add(h3("Packaging and deploying with Maven:"));
-			String cmd = "mvn clean org.rapidoid:deploy:jar";
 
-			info.add(h6(copy(b(cmd))));
+			String cmd = "mvn clean org.rapidoid:app:deploy";
+			info.add(copy(textarea(cmd).rows("2").attr("readonly", "readonly").style("width:100%; font-size: 10px;")));
 
 			info.add(h3("HTTP API for Deployment:"));
 
@@ -142,7 +141,7 @@ public class DeploymentHandler extends GUI implements ReqHandler {
 			if (U.notEmpty(processes)) {
 
 				String procHandleId = processes.get(0).id();
-				String processUrl = U.frmt("%s/_processes/%s", req.contextPath(), procHandleId);
+				String processUrl = Msc.specialUri("processes/" + procHandleId);
 
 				details = btn("Details")
 					.class_("btn btn-default btn-xs")
@@ -173,14 +172,14 @@ public class DeploymentHandler extends GUI implements ReqHandler {
 	private List<Map<String, ?>> apisInfo() {
 		return U.list(
 			apiInfo("Staging of the application JAR",
-				verb(HttpVerb.POST), "/_stage",
+				verb(HttpVerb.POST), "/rapidoid/stage",
 				U.map("_token", "Deployment token", "file", "<your-jar>"),
-				"curl -F 'file=@app.jar' 'http://example.com/_stage?_token=..."),
+				"curl -F 'file=@app.jar' 'http://example.com/rapidoid/stage?_token=..."),
 
 			apiInfo("Deployment of the staged JAR",
-				verb(HttpVerb.POST), "/_deploy",
+				verb(HttpVerb.POST), "/rapidoid/deploy",
 				U.map("_token", "Deployment token"),
-				"curl -X POST 'http://example.com/_deploy?_token=...")
+				"curl -X POST 'http://example.com/rapidoid/deploy?_token=...")
 		);
 	}
 

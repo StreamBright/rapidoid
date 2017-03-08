@@ -19,6 +19,7 @@ import org.rapidoid.http.customize.RolesProvider;
 import org.rapidoid.net.AsyncLogic;
 import org.rapidoid.u.U;
 import org.rapidoid.util.Msc;
+import org.rapidoid.util.MscOpts;
 import org.rapidoid.util.Tokens;
 import org.rapidoid.web.Screen;
 import org.rapidoid.web.ScreenBean;
@@ -65,7 +66,7 @@ public class RespImpl extends RapidoidThing implements Resp {
 
 	private volatile int code = 200;
 
-	private volatile MediaType contentType = MediaType.HTML_UTF_8;
+	private volatile MediaType contentType = HttpUtils.getDefaultContentType();
 
 	private final Map<String, String> headers = Coll.synchronizedMap();
 
@@ -325,8 +326,12 @@ public class RespImpl extends RapidoidThing implements Resp {
 
 	@Override
 	public synchronized Resp view(String view) {
+		if (view != null) {
+			HttpUtils.validateViewName(view);
+			this.mvc(true);
+		}
+
 		this.view = view;
-		this.mvc(true);
 		return this;
 	}
 
@@ -337,6 +342,11 @@ public class RespImpl extends RapidoidThing implements Resp {
 
 	@Override
 	public synchronized Resp mvc(boolean mvc) {
+
+		if (mvc) {
+			U.must(MscOpts.hasRapidoidHTML(), "The rapidoid-html module must be included for the MVC feature!");
+		}
+
 		this.mvc = mvc;
 		return this;
 	}
@@ -404,11 +414,11 @@ public class RespImpl extends RapidoidThing implements Resp {
 
 	@Override
 	public void resume(AsyncLogic asyncLogic) {
-		req.channel().resume(req.handle(), asyncLogic);
+		req.channel().resume(req.connectionId(), req.handle(), asyncLogic);
 	}
 
 	private Screen createScreen() {
-		Screen screen = Msc.hasRapidoidGUI() ? GUIUtil.newPage() : new ScreenBean();
+		Screen screen = MscOpts.hasRapidoidGUI() ? GUIUtil.newPage() : new ScreenBean();
 		initScreen(screen);
 		return screen;
 	}
@@ -475,7 +485,7 @@ public class RespImpl extends RapidoidThing implements Resp {
 
 	public byte[] renderToBytes() {
 		if (mvc()) {
-			byte[] bytes = ResponseRenderer.render(req, this);
+			byte[] bytes = ResponseRenderer.renderMvc(req, this);
 			HttpUtils.postProcessResponse(this); // the response might have been changed, so post-process again
 			return bytes;
 

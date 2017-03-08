@@ -23,30 +23,72 @@ package org.rapidoid.group;
 import org.rapidoid.RapidoidThing;
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
+import org.rapidoid.beany.BeanProperties;
+import org.rapidoid.beany.Beany;
+import org.rapidoid.beany.Prop;
 import org.rapidoid.cls.Cls;
+import org.rapidoid.cls.TypeKind;
 import org.rapidoid.commons.Str;
 import org.rapidoid.u.U;
 
 import java.lang.reflect.Method;
+import java.util.List;
 
 @Authors("Nikolche Mihajlovski")
 @Since("5.3.0")
 public abstract class AbstractManageable extends RapidoidThing implements Manageable {
 
 	@Override
-	public Object execute(String action) {
+	public Object runManageableAction(String action) {
 		Method method = Cls.findMethod(getClass(), Str.uncapitalized(action));
 
 		if (method != null) {
 			return Cls.invoke(method, this);
 
 		} else {
-			return executeAction(action);
+			return doManageableAction(action);
 		}
 	}
 
-	protected Object executeAction(String action) {
+	@Override
+	public List<String> getManageableActions() {
+		List<String> actions = U.list();
+
+		for (Method method : Cls.getMethodsAnnotated(getClass(), Action.class)) {
+			Action action = method.getAnnotation(Action.class);
+			actions.add(!action.name().isEmpty() ? action.name() : method.getName());
+		}
+
+		return actions;
+	}
+
+	@Override
+	public List<String> getManageableProperties() {
+		BeanProperties props = Beany.propertiesOf(this);
+
+		List<String> ps = U.list();
+
+		for (Prop prop : props) {
+			if (!prop.getName().contains("manageable")) {
+				TypeKind kind = Cls.kindOf(prop.getType());
+
+				if (kind.isPrimitive() || kind.isNumber() || kind.isArray()
+					|| kind == TypeKind.STRING || kind == TypeKind.DATE) {
+					ps.add(prop.getName());
+				}
+			}
+		}
+
+		return ps;
+	}
+
+	protected Object doManageableAction(String action) {
 		throw U.rte("Cannot handle action '%s'!", action);
+	}
+
+	@Override
+	public String getManageableType() {
+		return getClass().getSimpleName();
 	}
 
 }

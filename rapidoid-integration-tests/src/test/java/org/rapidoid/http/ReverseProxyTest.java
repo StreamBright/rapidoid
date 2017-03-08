@@ -23,7 +23,9 @@ package org.rapidoid.http;
 import org.junit.Test;
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
+import org.rapidoid.job.Jobs;
 import org.rapidoid.setup.On;
+import org.rapidoid.setup.Setup;
 
 @Authors("Nikolche Mihajlovski")
 @Since("5.2.3")
@@ -38,8 +40,8 @@ public class ReverseProxyTest extends IsolatedIntegrationTest {
 
 		On.get("/bar/hi").json("BAR HI");
 
-		proxy("/bar", "http://localhost:8080/foo");
-		proxy("/", "http://localhost:8080/foo");
+		proxy("/bar", localhost("/foo"));
+		proxy("/", localhost("/foo"));
 
 		getReq("/bar");
 		getReq("/bar/hello/");
@@ -48,6 +50,20 @@ public class ReverseProxyTest extends IsolatedIntegrationTest {
 		getReq("/");
 		getReq("/hello/");
 		getReq("/hi");
+	}
+
+	@Test
+	public void shouldRetryOnConnectionErrors() {
+		proxy("/", "localhost:9999");
+
+		Setup app = Setup.create("app").port(9999);
+
+		Jobs.after(2).seconds(() -> app.req(req -> "From app: " + req.uri()));
+
+		getReq("/hey");
+		getReq("/there");
+
+		app.shutdown();
 	}
 
 }

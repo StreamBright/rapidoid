@@ -24,8 +24,6 @@ import org.rapidoid.RapidoidThing;
 import org.rapidoid.annotation.Authors;
 import org.rapidoid.annotation.Since;
 import org.rapidoid.cls.Cls;
-import org.rapidoid.cls.TypeKind;
-import org.rapidoid.gui.GUI;
 import org.rapidoid.http.HttpUtils;
 import org.rapidoid.http.MediaType;
 import org.rapidoid.http.Resp;
@@ -35,9 +33,9 @@ import org.rapidoid.http.customize.PageDecorator;
 import org.rapidoid.http.customize.ViewResolver;
 import org.rapidoid.u.U;
 import org.rapidoid.util.Msc;
+import org.rapidoid.util.MscOpts;
 
 import java.io.ByteArrayOutputStream;
-import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.Map;
 
@@ -45,17 +43,22 @@ import java.util.Map;
 @Since("5.1.0")
 public class ResponseRenderer extends RapidoidThing {
 
-	public static byte[] render(ReqImpl req, Resp resp) {
+	public static byte[] renderMvc(ReqImpl req, Resp resp) {
 
 		Object result = resp.result();
-
-		String content;
+		String content = null;
 
 		if (shouldRenderView(resp)) {
-			content = renderView(req, resp, result);
-		} else {
-			Object cnt = U.or(result, "");
-			content = new String(HttpUtils.responseToBytes(req, cnt, MediaType.HTML_UTF_8, null));
+			boolean mandatory = (((RespImpl) resp).hasCustomView()) && U.notEmpty(resp.view());
+
+			ByteArrayOutputStream out = new ByteArrayOutputStream();
+			boolean rendered = renderView(req, resp, result, mandatory, out);
+			if (rendered) content = new String(out.toByteArray());
+		}
+
+		if (content == null) {
+			Object respResult = U.or(result, "");
+			content = new String(HttpUtils.responseToBytes(req, respResult, MediaType.HTML_UTF_8, null));
 		}
 
 		return renderPage(req, content);
@@ -69,29 +72,18 @@ public class ResponseRenderer extends RapidoidThing {
 
 		if (((RespImpl) resp).hasCustomView()) return U.notEmpty(resp.view());
 
-		return shouldRenderViewForResult(result);
+		return true;
 	}
 
-	private static boolean shouldRenderViewForResult(Object result) {
-
-		if ((result instanceof String)
-			|| (result instanceof byte[])
-			|| (result instanceof ByteBuffer)) return false;
-
-		if (GUI.isGUI(result)) return false;
-
-		TypeKind kind = Cls.kindOf(result);
-		return !(kind.isPrimitive() || kind.isNumber());
-	}
-
-	public static String renderView(ReqImpl req, Resp resp, Object result) {
+	public static boolean renderView(ReqImpl req, Resp resp, Object result, boolean mandatory, ByteArrayOutputStream out) {
 
 		String viewName = resp.view();
+		HttpUtils.validateViewName(viewName);
+
 		Customization custom = Customization.of(req);
-		ByteArrayOutputStream out = new ByteArrayOutputStream();
 
 		ViewResolver viewResolver = custom.viewResolver();
-		U.must(viewResolver != null, "A view renderer wasn't configured!");
+		U.must(viewResolver != null, "A view resolver wasn't configured!");
 
 		Object mvcModel;
 
@@ -99,8 +91,13 @@ public class ResponseRenderer extends RapidoidThing {
 			mvcModel = result;
 
 			if (result instanceof Map<?, ?>) {
-				Map<String, Object> map = U.cast(result);
+				Map<String, Object> map = U.map();
+
+				map.putAll(req.params());
+				map.putAll((Map) result);
 				map.putAll(resp.model());
+
+				mvcModel = map;
 
 			} else {
 				U.must(resp.model().isEmpty(), "The result must be a Map when custom model properties are assigned!");
@@ -110,15 +107,25 @@ public class ResponseRenderer extends RapidoidThing {
 			mvcModel = resp.model();
 		}
 
+		View view;
 		try {
-			View view = viewResolver.getView(viewName, custom.templateLoader());
-			view.render(mvcModel, out);
-
+			view = viewResolver.getView(viewName, custom.templateLoader());
 		} catch (Throwable e) {
-			throw U.rte("Error while rendering view: " + viewName, e);
+			throw U.rte("Error while retrieving view: " + viewName, e);
 		}
 
-		return new String(out.toByteArray());
+		if (view != null) {
+			try {
+				view.render(mvcModel, out);
+			} catch (Throwable e) {
+				throw U.rte("Error while rendering view: " + viewName, e);
+			}
+
+		} else {
+			U.must(!mandatory, "The view '%s' doesn't exist!", viewName);
+		}
+
+		return view != null;
 	}
 
 	public static byte[] renderPage(ReqImpl req, String content) {
@@ -139,7 +146,7 @@ public class ResponseRenderer extends RapidoidThing {
 	}
 
 	private static Object wrapGuiContent(Object content) {
-		if (Msc.hasRapidoidGUI()) {
+		if (MscOpts.hasRapidoidGUI()) {
 			Object[] items = null;
 
 			if (content instanceof Collection<?>) {
