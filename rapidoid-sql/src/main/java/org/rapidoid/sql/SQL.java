@@ -10,7 +10,6 @@ import org.rapidoid.jdbc.JdbcClient;
 import org.rapidoid.sql.dsl.*;
 import org.rapidoid.u.U;
 
-import java.util.List;
 import java.util.Map;
 
 /*
@@ -62,8 +61,7 @@ public class SQL extends RapidoidThing {
 	 * Equivalent to SELECT * FROM [table] ...
 	 */
 	public static <T> T get(Class<T> resultType, Object id) {
-		List<T> list = select("*").from(tableOf(resultType)).where("id = ?", id).as(resultType);
-		return U.single(list);
+		return select("*").from(tableOf(resultType)).where("id = ?", id).as(resultType).single();
 	}
 
 	public static String tableOf(Class<?> resultType) {
