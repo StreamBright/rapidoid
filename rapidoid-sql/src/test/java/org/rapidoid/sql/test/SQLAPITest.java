@@ -67,7 +67,7 @@ public class SQLAPITest extends SQLTestCommons {
 			.where("id < ?", 25)
 			.and("? > id or id = ?", 50, 1000)
 			.and("id = id")
-			.as(Movie.class);
+			.as(Movie.class).all();
 
 		eq(movies.size(), 2);
 
